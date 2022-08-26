@@ -23,6 +23,14 @@ struct seckey {
 	int e[N];
 };
 
+//montgomery剰余乗算
+struct mon {
+	const size_t nbit;
+	const mpz_class R;
+	const mpz_class R2;
+	const mpz_class nr;
+};
+
 //有限体の加算	c=a+b %p
 void add_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c);
 //有限体の減算	c=a-b %p
