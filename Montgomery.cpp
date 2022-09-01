@@ -77,15 +77,12 @@ Point xMUL(const Point& P, const Point& A_1, const mpz_class& n, const mpz_class
 	//a24の計算
 	Ap24_1.Z=1;
 	add_fp(A_1.X, 2, mod, &Ap24_1.X);
-	div_fp(Ap24_1.X, 4,mod,&div_ans);
-	Ap24_1.X = div_ans;
+	mul_fp(Ap24_1.X, mpz_class("1331684699081905773686966904488651388517342873708180584403111660513502390006644134406723028256595313406156735410987361198165720310405343322235720072016415"), mod, &Ap24_1.X);
 
 	x1=xDBL(P, Ap24_1,mod);
 
-	string bit;
 	size_t bit_size;
-	bit = n.get_str(2);
-	bit_size = bit.size();
+	bit_size = mpz_sizeinbase(n.get_mpz_t(), 2);
 
 	for (int i = bit_size - 2; i >= 0; i--) {
 		if (mpz_tstbit(n.get_mpz_t(), i) == 0) xDBLADD(x0, x1, P, Ap24_1, mod, x0, x1);
