@@ -13,15 +13,12 @@ void genCSIDHkey(seckey* K)
 
 //Algorithm 1: Verifying supersingularity.
 //CSIDH論文 p15
-bool validate(const mpz_class& a, const mpz_class& mod) {
-    mpz_class k, r2p, d=1;
+bool validate(const mpz_class& a) {
 	
-    //4*(sqrt(mod))
-    mpz_sqrt(r2p.get_mpz_t(), mod.get_mpz_t());
-    r2p *= 4;
+    mpz_class k, d=1;
 
     mpz_class x;
-    x=random_fp(mod);
+    x=random_fp();
 
     Point P, Q, temp_point, A_1;
 
@@ -33,14 +30,14 @@ bool validate(const mpz_class& a, const mpz_class& mod) {
 
     bool isSupersingular = false;
     for (int i = 0; i < N; i++) {
-        k = mod + 1;
+        k = para.mod + 1;
 		k /= primes[i];
 
-        temp_point =xMUL(P, A_1, k, mod);
+        temp_point =xMUL(P, A_1, k);
         Q = temp_point;
 
         k=primes[i];
-        temp_point=xMUL(Q, A_1, k, mod);
+        temp_point=xMUL(Q, A_1, k);
         if (!(temp_point.Z==0)) {
             isSupersingular = false;
             break;
@@ -49,7 +46,7 @@ bool validate(const mpz_class& a, const mpz_class& mod) {
         if (!(Q.Z == 0))
             d *= primes[i];
 
-        if (d > r2p) {
+        if (d > para.sqrt4) {
             isSupersingular = true;
             break;
         }
@@ -58,7 +55,7 @@ bool validate(const mpz_class& a, const mpz_class& mod) {
 }
 
 
-mpz_class action(const mpz_class& A, const seckey& Key, const mpz_class& mod) {
+mpz_class action(const mpz_class& A, const seckey& Key) {
     mpz_class x, rhs, k, p_mul, q_mul;
 
     Point P, Q, R, temp1_point, temp2_point, A_point;
@@ -83,10 +80,10 @@ mpz_class action(const mpz_class& A, const seckey& Key, const mpz_class& mod) {
         }
     }
     while (flag) {
-        x=random_fp(mod);
-        rhs=calc_twist(A_point.X, x, mod);
+        x=random_fp();
+        rhs=calc_twist(A_point.X, x);
 
-        s = mpz_kronecker(rhs.get_mpz_t(), mod.get_mpz_t());
+        s = mpz_kronecker(rhs.get_mpz_t(), para.mod.get_mpz_t());
 		
         if (s == 0)
             continue;
@@ -102,25 +99,28 @@ mpz_class action(const mpz_class& A, const seckey& Key, const mpz_class& mod) {
         if (k == 1)
             continue;
 
-        p_mul = mod + 1;
+
+        p_mul = para.mod + 1;
 		p_mul /= k;
 
         P.X= x;
         P.Z = 1;
-        Q=xMUL(P, A_point, p_mul, mod);
+        Q=xMUL(P, A_point, p_mul);
 
         for (int i = 0; i < N; i++) {
             if (S[i] == 0)
                 continue;
-
+			
             q_mul= k / primes[i];
-            R=xMUL(Q, A_point, q_mul, mod);
+
+            //cout << "y^2 = x^3 + " << A_point.X << "*x^2 + x" << endl;
+            R=xMUL(Q, A_point, q_mul);
             if (R.Z==0)
                 continue;
 
-            IsogenyCalc(A_point, Q, R, mod, primes[i], &temp1_point, &temp2_point);
+            IsogenyCalc(A_point, Q, R,  primes[i], &temp1_point, &temp2_point);
 			
-            div_fp(temp1_point.X, temp1_point.Z, mod, &A_point.X);
+            div_fp(temp1_point.X, temp1_point.Z,  &A_point.X);
             A_point.Z = 1;
 			
             Q= temp2_point;
@@ -128,6 +128,8 @@ mpz_class action(const mpz_class& A, const seckey& Key, const mpz_class& mod) {
             e[i] -= s;
 
         }
+
+
 
         flag = false;
         for (int i = 0; i < N; i++) {

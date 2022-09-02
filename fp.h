@@ -23,42 +23,50 @@ struct seckey {
 	int e[N];
 };
 
+
 //montgomery剰余乗算
 struct mon {
+	const mpz_class mod;
+	const mpz_class inv4;
+	//4*(sqrt(mod))
+	const mpz_class sqrt4;
+	
 	const size_t nbit;
 	const mpz_class R;
 	const mpz_class R2;
 	const mpz_class nr;
 };
 
+extern mon para;
+
 //有限体の加算	c=a+b %p
-void add_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c);
+void add_fp(const mpz_class& a, const mpz_class& b, mpz_class* c);
 //有限体の減算	c=a-b %p
-void sub_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c);
+void sub_fp(const mpz_class& a, const mpz_class& b, mpz_class* c);
 //有限体の乗算	c=a*b %p
-void mul_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c);
+void mul_fp(const mpz_class& a, const mpz_class& b, mpz_class* c);
 //有限体のべき乗	c=a^b %p
-void pow_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c);
+void pow_fp(const mpz_class& a, const mpz_class& b, mpz_class* c);
 //有限体の逆元	c=a^-1
-void inv_fp(const mpz_class& a, const mpz_class& p, mpz_class* c);
+void inv_fp(const mpz_class& a, mpz_class* c);
 //有限体の除算	c=a/b %p
-void div_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c);
+void div_fp(const mpz_class& a, const mpz_class& b, mpz_class* c);
 //有限体の2乗	c=a^2 %p
-void sqr_fp(const mpz_class& a, const mpz_class& p, mpz_class* c);
+void sqr_fp(const mpz_class& a, mpz_class* c);
 
 //p以下の乱数を生成
-mpz_class random_fp(const mpz_class& p);
+mpz_class random_fp();
 
 
-Point xMUL(const Point& P, const Point& A_1, const mpz_class& k, const mpz_class& mod);
+Point xMUL(const Point& P, const Point& A_1, const mpz_class& k);
 
-mpz_class calc_twist(const mpz_class& a, const mpz_class& x, const mpz_class& mod);
+mpz_class calc_twist(const mpz_class& a, const mpz_class& x);
 
-void IsogenyCalc(const Point& A, const Point& P, const Point& K, const mpz_class& mod, const size_t& k, Point* Aout, Point* Pout);
+void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k, Point* Aout, Point* Pout);
 
 void genCSIDHkey(seckey* K);
 
 
-bool validate(const mpz_class& a, const mpz_class& mod);
+bool validate(const mpz_class& a);
 
-mpz_class action(const mpz_class& A, const seckey& Key, const mpz_class& mod);
+mpz_class action(const mpz_class& A, const seckey& Key);

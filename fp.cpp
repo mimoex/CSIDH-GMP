@@ -1,109 +1,117 @@
 #include "fp.h"
 
-void add_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c)
-{
-	*c = a + b;
-	if (*c >= p) *c -= p;
-}
-
-void sub_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c)
-{
-	if (a >= b) *c = a - b;
-	else *c = a + p - b;
-}
-
-
-void mul_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c)
-{
-	*c = a * b;
-	*c %= p;
-}
-
-
 //Montgomery multiplicatuon
-struct mon para = {
+mon para = {
+	mpz_class("5326738796327623094747867617954605554069371494832722337612446642054009560026576537626892113026381253624626941643949444792662881241621373288942880288065659"),
+	mpz_class("1331684699081905773686966904488651388517342873708180584403111660513502390006644134406723028256595313406156735410987361198165720310405343322235720072016415"),
+	mpz_class("72984510660328627668487265992516213834621203782665312994583680849552234545871"),
 	511,
-	mpz_class("6703903964971298549787012499102923063739682910296196688861780721860882015036773488400937149083451713845015929093243025426876941405973284973216824503042047") ,
+	mpz_class("6703903964971298549787012499102923063739682910296196688861780721860882015036773488400937149083451713845015929093243025426876941405973284973216824503042047"),
 	mpz_class("1032312334021767149891928024133341961156775772779044637692888609886692159219829053969396827895169639458311379179211658124290421880650098963926249002436041"),
 	mpz_class("4648943738516491079755353375009763753751649870163419510591469415438864277366534547184950551625493863052632292052244681369519164709307558804992291140151629")
 
 };
 
-mpz_class MR(const mpz_class& t, const mpz_class& mod)
+
+void add_fp(const mpz_class& a, const mpz_class& b, mpz_class* c)
 {
-	mpz_class c;
-	c = t * para.nr;
-	c &= para.R;
-	c *= mod;
-	c += t;
-	c >>= para.nbit;
-	if (c >= mod) c -= mod;
-	
-	return c;
+	*c = a + b;
+	if (*c >= para.mod) *c -= para.mod;
 }
 
-void mon_mul_fp(const mpz_class& a, const mpz_class& b, const mpz_class& mod,
-	mpz_class* c)
+void sub_fp(const mpz_class& a, const mpz_class& b, mpz_class* c)
 {
-	//mon para;
-	mpz_class test;
-	test = MR((a * b), mod);
-	test *= para.R2;
-	*c= MR(test, mod);
+	if (a >= b) *c = a - b;
+	else *c = a + para.mod - b;
 }
 
 
-void sqr_fp(const mpz_class& a, const mpz_class& p, mpz_class* c)
+void mul_fp(const mpz_class& a, const mpz_class& b, mpz_class* c)
+{
+	*c = a * b;
+	*c %= para.mod;
+}
+
+
+
+//
+//mpz_class MR(const mpz_class& t, const mpz_class& mod)
+//{
+//	mpz_class c;
+//	c = t * para.nr;
+//	c &= para.R;
+//	c *= mod;
+//	c += t;
+//	c >>= para.nbit;
+//	if (c >= mod) c -= mod;
+//	
+//	return c;
+//}
+//
+//void mul_fp(const mpz_class& a, const mpz_class& b, const mpz_class& mod,
+//	mpz_class* c)
+//{
+//	//mon para;
+//	mpz_class test;
+//	test = MR((a * b), mod) * para.R2;
+//	//test *= para.R2;
+//	*c= MR(test, mod);
+//}
+
+
+void sqr_fp(const mpz_class& a, mpz_class* c)
 {
 	*c = a * a;
-	*c %= p;
+	*c %= para.mod;
 }
 
 
-void pow_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c)
+void pow_fp(const mpz_class& a, const mpz_class& b, mpz_class* c)
 {
-	mpz_powm(c->get_mpz_t(), a.get_mpz_t(), b.get_mpz_t(), p.get_mpz_t());
+	//mpz_powm(c->get_mpz_t(), a.get_mpz_t(), b.get_mpz_t(), p.get_mpz_t());
+	
+	mpz_class result = 1;
+
+	for (int i = para.nbit-1; i >= 0; i--) {
+		mul_fp(result, result, &result);	//double
+		if (mpz_tstbit(b.get_mpz_t(), i) == 1) mul_fp(result, a, &result);	//add
+	}
+	*c = result;
 }
 
 //逆元
-void inv_fp(const mpz_class& a, const mpz_class& p, mpz_class* c)
+void inv_fp(const mpz_class& a, mpz_class* c)
 {
 	if (a == 0) {
 		throw std::range_error("Divided by zero.");
 
 	}
 	else {
-		pow_fp(a, p - 2, p, c);
+		pow_fp(a, para.mod - 2, c);
 	}
 
 }
 
 
-void div_fp(const mpz_class& a, const mpz_class& b, const mpz_class& p, mpz_class* c)
+void div_fp(const mpz_class& a, const mpz_class& b, mpz_class* c)
 {
-	inv_fp(b, p, c);
-	mul_fp(a, *c, p, c);
+	inv_fp(b, c);
+	mul_fp(a, *c, c);
 }
 
 //有限体pから乱数生成
-mpz_class random_fp(const mpz_class& mod)
+mpz_class random_fp()
 {
-	mpz_class x, cnt;
-	size_t n;
-	string bit;
-
-	bit = mod.get_str(2);
-	n = bit.size();
+	mpz_class x;
 
 	random_device rnd;
 	gmp_randclass r(gmp_randinit_default);
 	r.seed(rnd());
 
 	while (1) {
-		x = r.get_z_bits(n);
-		cnt++;
+		x = r.get_z_bits(para.nbit);
 
-		if (x < mod) {
+		if (x < para.mod) {
 			return x;
 		}
 	}
