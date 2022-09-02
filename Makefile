@@ -2,7 +2,6 @@ SRC=main.cpp fp.cpp CSIDH.cpp Montgomery.cpp
 OBJ=$(SRC:.cpp=.o)
 DEP=$(SRC:.cpp=.d)
 
-CC=g++
 
 TARGET=csidh
 CFLAGS+=-O3 -Wall -Wextra -DNDEUBG -g
@@ -16,7 +15,7 @@ all: $(TARGET)
 -include $(DEP)
 
 $(TARGET): $(OBJ)
-	$(CC) -o $@ $? $(LDFLAGS)
+	$(CXX) -o $@ $? $(LDFLAGS)
 
 clean:
 	$(RM) -rf $(OBJ) $(DEP) $(TARGET)
