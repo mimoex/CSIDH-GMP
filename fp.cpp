@@ -26,37 +26,26 @@ void sub_fp(const mpz_class& a, const mpz_class& b, mpz_class* c)
 }
 
 
-void mul_fp(const mpz_class& a, const mpz_class& b, mpz_class* c)
+mpz_class MR(const mpz_class& t)
 {
-	*c = a * b;
-	*c %= para.mod;
+	mpz_class c;
+	c = t * para.nr;
+	c &= para.R;
+	c *= para.mod;
+	c += t;
+	c >>= para.nbit;
+	if (c >= para.mod) c -= para.mod;
+	
+	return c;
 }
 
-
-
-//
-//mpz_class MR(const mpz_class& t, const mpz_class& mod)
-//{
-//	mpz_class c;
-//	c = t * para.nr;
-//	c &= para.R;
-//	c *= mod;
-//	c += t;
-//	c >>= para.nbit;
-//	if (c >= mod) c -= mod;
-//	
-//	return c;
-//}
-//
-//void mul_fp(const mpz_class& a, const mpz_class& b, const mpz_class& mod,
-//	mpz_class* c)
-//{
-//	//mon para;
-//	mpz_class test;
-//	test = MR((a * b), mod) * para.R2;
-//	//test *= para.R2;
-//	*c= MR(test, mod);
-//}
+void mul_fp(const mpz_class& a, const mpz_class& b,
+	mpz_class* c)
+{
+	mpz_class test;
+	test = MR(a * b) * para.R2;
+	*c= MR(test);
+}
 
 
 void sqr_fp(const mpz_class& a, mpz_class* c)
