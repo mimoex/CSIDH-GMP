@@ -68,15 +68,16 @@ void sqr_fp(const mpz_class& a, mpz_class* c)
 
 void pow_fp(const mpz_class& a, const mpz_class& b, mpz_class* c)
 {
-	//mpz_powm(c->get_mpz_t(), a.get_mpz_t(), b.get_mpz_t(), p.get_mpz_t());
+	mpz_class x;
+	x = MR(a*para.R2);
 	
-	mpz_class result = 1;
+	mpz_class result = MR(para.R2);
 
 	for (int i = para.nbit-1; i >= 0; i--) {
-		mul_fp(result, result, &result);	//double
-		if (mpz_tstbit(b.get_mpz_t(), i) == 1) mul_fp(result, a, &result);	//add
+		result = MR(result * result);
+		if (mpz_tstbit(b.get_mpz_t(), i) == 1) result = MR(result * x);
 	}
-	*c = result;
+	*c = MR(result);
 }
 
 //逆元
