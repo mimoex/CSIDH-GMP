@@ -1,6 +1,9 @@
 #include <time.h>
 #include "fp.h"
 
+seckey testAkey = { -4, -3, 3, 1, 5, -5, 1, 5, -5, 1, -3, -2, 4, 3, 2, 5, -2, -1, -2, 3, 2, 1, -4, -4, -1, -3, -4, 2, -2, -4, -2, 5, 2, -1, 2, 0, 3, -2, 1, 1, -1, -5, -3, 2, 3, 2, 5, -4, 1, 2, -4, -3, 2, 4, 1, -1, -3, -5, 2, 4, -4, 3, -4, -4, 3, -3, -2, -2, 3, 0, 3, 5, -5, 3 };
+seckey testBkey = { -2, -5, -1, -1, -5, 0, 5, 4, 2, 1, 4, 1, -5, -3, 2, 3, 3, 1, -2, 4, -3, -4, 3, -1, 5, -3, 1, -5, 5, -1, 0, 3, 5, 5, 3, -5, 1, -5, -4, -3, -2, -4, 4, -4, 1, 0, -5, -3, -2, -4, 1, -1, -5, 5, -3, 3, 4, 5, -4, 0, 4, 2, 4, -3, -2, 3, -5, -5, -2, 3, -4, 2, -5, -1 };
+
 bool csidh()
 {
 	mpz_class A;	//A=0 ( y^2 =x^3 +0*x^2 +x )
@@ -10,11 +13,12 @@ bool csidh()
 	seckey secA;
 
 	t0 = clock();
-	genCSIDHkey(&secA);
+	//genCSIDHkey(&secA);
+	secA = testAkey;
 	t1 = clock();
 	cout << "Aさんの秘密鍵:" << endl;
-	for(int i=0;i<N;i++) cout << secA.e[i] << ", ";
-	cout << endl; 
+	for (int i = 0; i < N; i++) cout << secA.e[i] << ", ";
+	cout << endl;
 
 	cout << "Aさんの秘密鍵生成時間: " << 1000.000 * (t1 - t0) / CLOCKS_PER_SEC << "ms\n" << endl;
 
@@ -29,14 +33,15 @@ bool csidh()
 	cout << "Aさんの公開情報:" << A_parm << endl;
 	cout << "supersingular?: " << validate(A_parm) << endl;
 
-	cout << "Aさんの公開鍵生成時間: " << 1000.000 * (t1 - t0) / CLOCKS_PER_SEC << "ms\n"<< endl;
+	cout << "Aさんの公開鍵生成時間: " << 1000.000 * (t1 - t0) / CLOCKS_PER_SEC << "ms\n" << endl;
 
 
 	//Bさんのstep1
 	seckey secB;
 
 	t0 = clock();
-	genCSIDHkey(&secB);
+	//genCSIDHkey(&secB);
+	secB = testBkey;
 	t1 = clock();
 
 	cout << "Bさんの秘密鍵:" << endl;
@@ -95,12 +100,12 @@ int main()
 	start = std::chrono::system_clock::now();
 
 	bool check;
-	check=csidh();
+	check = csidh();
 
 	end = std::chrono::system_clock::now();
 	double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 	cout << "time(全体): " << elapsed << endl;
-	
+
 	if (check) cout << "OK" << endl;
 	else cout << "NG" << endl;
 
