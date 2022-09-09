@@ -1,17 +1,9 @@
 #include "fp.h"
 
 // https://www.hyperelliptic.org/EFD/g1p/auto-montgom-xz.html#diffadd-dadd-1987-m-3
-Point Montgomery_ADD(const Point& P, const Point& Q, const Point& R) {
+Point Montgomery_ADDmon(const Point& Pm, const Point& Qm, const Point& Rm) {
 	mpz_class A, B, C, D, DA, CB, temp1, temp2;
-	Point result;
-	Point Pm,Qm,Rm,resultm;
-
-	Pm.X = MR(P.X * para.R2);
-	Pm.Z = MR(P.Z * para.R2);
-	Qm.X = MR(Q.X * para.R2);
-	Qm.Z = MR(Q.Z * para.R2);
-	Rm.X = MR(R.X * para.R2);
-	Rm.Z = MR(R.Z * para.R2);
+	Point resultm;
 
 	add_fp(Qm.X, Qm.Z, &A);
 	sub_fp(Qm.X, Qm.Z, &B);
@@ -26,25 +18,15 @@ Point Montgomery_ADD(const Point& P, const Point& Q, const Point& R) {
 	sub_fp(DA, CB, &temp2);
 	temp2 = MR(temp2 * temp2);
 	resultm.Z = MR(Rm.X * temp2);
-
-	result.X = MR(resultm.X);
-	result.Z = MR(resultm.Z);
-	return result;
+	return resultm;
 }
 
 // https://www.hyperelliptic.org/EFD/g1p/auto-montgom-xz.html#doubling-dbl-1987-m-2
-Point xDBL(const Point& P, const Point& Ap24)
+Point xDBLmon(const Point& Pm, const Point& Ap24m)
 {
-	Point result;
-	mpz_class t0, t1, t2, t3;
-	Point Pm, Ap24m,resultm;
+	mpz_class t0, t1;
+	Point resultm;
 
-	Pm.X = MR(P.X * para.R2);
-	Pm.Z = MR(P.Z * para.R2);
-	Ap24m.X = MR(Ap24.X * para.R2);
-	Ap24m.Z = MR(Ap24.Z * para.R2);
-
-	
 	sub_fp(Pm.X, Pm.Z, &t0);
 	add_fp(Pm.X, Pm.Z, &t1);
 	t0 = MR(t0 * t0);
@@ -52,15 +34,67 @@ Point xDBL(const Point& P, const Point& Ap24)
 	t1 = MR(t1 * t1);
 	resultm.Z = MR(Ap24m.Z * t0);
 	resultm.X = MR(resultm.Z * t1);
-	result.X = MR(resultm.X);		//逆変換
 
 	sub_fp(t1, t0, &t1);
 	t0 = MR(Ap24m.X * t1);
 	add_fp(resultm.Z, t0, &resultm.Z);
 
 	resultm.Z = MR(resultm.Z * t1);
-	result.Z = MR(resultm.Z);		//逆変換
-	return result;
+	return resultm;
+}
+
+
+//動かない…
+void xDBLADDmon(const Point& P, const Point& Q, const Point& R, const Point& Ap24_1,
+	Point& DBLout, Point& ADDout) {
+	mpz_class t0, t1, t2;
+	Point Pm, Qm, Rm, Ap24_1m, DBLoutm, ADDoutm;
+	
+	Pm.X = MR(P.X);
+	Pm.Z = MR(P.Z);
+	Qm.X = MR(Q.X);
+	Qm.Z = MR(Q.Z);
+	Rm.X = MR(R.X);
+	Rm.Z = MR(R.Z);
+	Ap24_1m.X = MR(Ap24_1.X);
+	
+	add_fp(Pm.X, Pm.Z, &t0);
+	sub_fp(Pm.X, Pm.Z, &t1);
+	//sqr_fp(t0, &DBLout.X);
+	mul_mon(t0, t0, &DBLoutm.X);
+	sub_fp(Qm.X, Qm.Z, &t2);
+	add_fp(Qm.X, Qm.Z, &ADDoutm.X);
+	//mul_fp(t0, t2, &t0);
+	mul_mon(t0, t2, &t0);
+	//sqr_fp(t1, &DBLout.Z);
+	mul_mon(t1, t1, &DBLoutm.Z);
+
+	//mul_fp(t1, ADDout.X, &t1);
+	mul_mon(t1, ADDoutm.X, &t1);
+	sub_fp(DBLoutm.X, DBLoutm.Z, &t2);
+	//mul_fp(DBLout.X, DBLout.Z, &DBLout.X);
+	mul_mon(DBLoutm.X, DBLoutm.Z, &DBLoutm.X);
+	//mul_fp(Ap24_1.X, t2, &ADDout.X);
+	mul_mon(Ap24_1m.X, t2, &ADDoutm.X);
+	sub_fp(t0, t1, &ADDoutm.Z);
+	add_fp(DBLoutm.Z, ADDoutm.X, &DBLoutm.Z);
+	add_fp(t0, t1, &ADDoutm.X);
+
+	//mul_fp(DBLout.Z, t2, &DBLout.Z);
+	mul_mon(DBLoutm.Z, t2, &DBLoutm.Z);
+	//sqr_fp(ADDout.Z, &ADDout.Z);
+	mul_mon(ADDoutm.Z, ADDoutm.Z, &ADDoutm.Z);
+	//sqr_fp(ADDout.X, &ADDout.X);
+	mul_mon(ADDoutm.X, ADDoutm.X, &ADDoutm.X);
+	//mul_fp(ADDout.Z, R.X, &ADDout.Z);
+	mul_mon(ADDoutm.Z, Rm.X, &ADDoutm.Z);
+	//mul_fp(ADDout.X, R.Z, &ADDout.X);
+	mul_mon(ADDoutm.X, Rm.Z, &ADDoutm.X);
+
+	ADDout.X = MR(ADDoutm.X);
+	ADDout.Z = MR(ADDoutm.Z);
+	DBLout.X = MR(DBLoutm.X);
+	DBLout.Z = MR(DBLoutm.Z);
 }
 
 void xDBLADD(const Point& P, const Point& Q, const Point& R, const Point& Ap24_1,
@@ -93,8 +127,12 @@ void xDBLADD(const Point& P, const Point& Q, const Point& R, const Point& Ap24_1
 Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 	Point x0, x1, Ap24_1, Point_temp1, Point_temp2;
 	mpz_class div_ans;
+	Point Pm, Ap24_1m, x0m;
 
 	x0 = P;
+	x0m.X = MR(x0.X);
+	x0m.Z = MR(x0.Z);
+	
 	//a24の計算
 	Ap24_1.Z = 1;
 	add_fp(A_1.X, 2, &Ap24_1.X);
@@ -102,7 +140,16 @@ Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 	mul_fp(Ap24_1.X, para.inv4, &div_ans);
 	Ap24_1.X = div_ans;
 
-	x1 = xDBL(P, Ap24_1);
+	Pm.X = MR(P.X);
+	Pm.Z = MR(P.Z);
+	Ap24_1m.X = MR(Ap24_1.X);
+	Ap24_1m.Z = MR(Ap24_1.Z);
+
+	//x1 = xDBL(P, Ap24_1);
+	x1 = xDBLmon(Pm, Ap24_1m);
+
+	x1.X = MR(x1.X);
+	x1.Z = MR(x1.Z);
 
 	size_t bit_size;
 	bit_size = mpz_sizeinbase(n.get_mpz_t(), 2);
@@ -128,24 +175,15 @@ mpz_class calc_twist(const mpz_class& a, const mpz_class& x) {
 	return MR(result);
 }
 
-void Evaluation(const Point& P, const Point& Q,
+void Evaluation(const Point& Pm, const Point& Qm,
 	mpz_class& Xout, mpz_class& Zout)
 {
 	Point temp;
-	Point Pm,Qm;
-	Pm.X = MR(P.X);
-	Pm.Z = MR(P.Z);
-	Qm.X = MR(Q.X);
-	Qm.Z = MR(Q.Z);
-
-	//sqr_fp(Q.X, &temp.X);
+	
 	temp.X = MR(Qm.X * Qm.X);
-	//sqr_fp(Q.Z, &temp.Z);
 	temp.Z = MR(Qm.Z * Qm.Z);
-	//mul_fp(P.X, temp.X, &Xout);
-	Xout = MR(MR(Pm.X * temp.X));
-	//mul_fp(P.Z, temp.Z, &Zout);
-	Zout = MR(MR(Pm.Z * temp.Z));
+	Xout = MR(Pm.X * temp.X);
+	Zout = MR(Pm.Z * temp.Z);
 }
 
 Point mont2ed(const Point& P)
@@ -159,69 +197,86 @@ Point mont2ed(const Point& P)
 	return ed;
 }
 
+const mpz_class MR2 = mpz_class("2061108375497486669972312027415001064490813581256788537607556675121740674107862070712406989315913446194259636464745447945409324122528632250952933995334779");
+const mpz_class MR4 = mpz_class("4122216750994973339944624054830002128981627162513577075215113350243481348215724141424813978631826892388519272929490895890818648245057264501905867990669558");
 
 //Isogeny
 void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k,
 	Point* Aout, Point* Pout) {
 
 	mpz_class tmp0, tmp1, tmp2, Psum, Pdif;
-	Point Q, ed, prod, Ap24_C24;
+	Point ed, prod;
+	Point Am, Pm, Qm, Km, Ap24_C24m;
+	Point Aoutm, Poutm;
 
-	add_fp(A.X, 2, &Ap24_C24.X);
-	Ap24_C24.Z = 4;
+	Am.X = MR(A.X);
+	Am.Z = MR(A.Z);
+	Pm.X = MR(P.X);
+	Pm.Z = MR(P.Z);
+	Km.X = MR(K.X);
+	Km.Z = MR(K.Z);
 
-	add_fp(P.X, P.Z, &Psum);
-	sub_fp(P.X, P.Z, &Pdif);
+	add_fp(Am.X, MR2, &Ap24_C24m.X);
+	Ap24_C24m.Z = MR4;
 
-	sub_fp(K.X, K.Z, &prod.X);
-	add_fp(K.X, K.Z, &prod.Z);
+	add_fp(Pm.X, Pm.Z, &Psum);
+	sub_fp(Pm.X, Pm.Z, &Pdif);
 
-	mul_fp(prod.X, Psum, &tmp1);
-	mul_fp(prod.Z, Pdif, &tmp0);
-	add_fp(tmp0, tmp1, &Q.X);
-	sub_fp(tmp0, tmp1, &Q.Z);
+	sub_fp(Km.X, Km.Z, &prod.X);
+	add_fp(Km.X, Km.Z, &prod.Z);
+	
+	mul_mon(prod.X, Psum, &tmp1);
+	mul_mon(prod.Z, Pdif, &tmp0);
+	add_fp(tmp0, tmp1, &Qm.X);
+	sub_fp(tmp0, tmp1, &Qm.Z);
 
-	Point M[3] = { K };
+	Point M[3] = { Km };
 
-	M[1] = xDBL(K, Ap24_C24);
+	M[1] = xDBLmon(Km, Ap24_C24m);
 
 	for (int i = 1; i < (k >> 1); ++i) {
 
 		if (i >= 2)
-			M[i % 3] = Montgomery_ADD(M[(i - 1) % 3], K, M[(i - 2) % 3]);
+			M[i % 3] = Montgomery_ADDmon(M[(i - 1) % 3], Km, M[(i - 2) % 3]);
 
 		sub_fp(M[i % 3].X, M[i % 3].Z, &tmp1);
 		add_fp(M[i % 3].X, M[i % 3].Z, &tmp0);
-		mul_fp(prod.X, tmp1, &prod.X);
-		mul_fp(prod.Z, tmp0, &prod.Z);
-		mul_fp(tmp1, Psum, &tmp1);
-		mul_fp(tmp0, Pdif, &tmp0);
+		mul_mon(prod.X, tmp1, &prod.X);
+		mul_mon(prod.Z, tmp0, &prod.Z);
+		mul_mon(tmp1, Psum, &tmp1);
+		mul_mon(tmp0, Pdif, &tmp0);
 		add_fp(tmp0, tmp1, &tmp2);
-		mul_fp(Q.X, tmp2, &Q.X);
+		mul_mon(Qm.X, tmp2, &Qm.X);
 		sub_fp(tmp0, tmp1, &tmp2);
-		mul_fp(Q.Z, tmp2, &Q.Z);
+		mul_mon(Qm.Z, tmp2, &Qm.Z);
 
 	}
 
-	Evaluation(P, Q, Pout->X, Pout->Z);
+	Evaluation(Pm, Qm, Pout->X, Pout->Z);	//in->montgomery, out->montgomery
 
 	//A faster way to the CSIDH p10くらい
 	ed = mont2ed(A);
 
-	pow_fp(ed.X, k, &ed.X);
-	pow_fp(ed.Z, k, &ed.Z);
+	pow_mon(ed.X, k, &ed.X);
+	pow_mon(ed.Z, k, &ed.Z);
 
 	// compute prod.x^8, prod.z^8
-	pow_fp(prod.X, 8, &prod.X);
-	pow_fp(prod.Z, 8, &prod.Z);
+	mul_mon(prod.X, prod.X, &prod.X);
+	mul_mon(prod.X, prod.X, &prod.X);
+	mul_mon(prod.X, prod.X, &prod.X);
+	mul_mon(prod.Z, prod.Z, &prod.Z);
+	mul_mon(prod.Z, prod.Z, &prod.Z);
+	mul_mon(prod.Z, prod.Z, &prod.Z);
 
 	// compute image curve parameters
-	mul_fp(ed.Z, prod.X, &ed.Z);
-	mul_fp(ed.X, prod.Z, &ed.X);
+	mul_mon(ed.Z, prod.X, &ed.Z);
+	mul_mon(ed.X, prod.Z, &ed.X);
 
 	// compute Montgomery params
-	add_fp(ed.X, ed.Z, &Aout->X);
-	sub_fp(ed.X, ed.Z, &Aout->Z);
-	add_fp(Aout->X, Aout->X, &Aout->X);
+	add_fp(ed.X, ed.Z, &Aoutm.X);
+	sub_fp(ed.X, ed.Z, &Aoutm.Z);
+	add_fp(Aoutm.X, Aoutm.X, &Aoutm.X);
 
+	Aout->X = MR(Aoutm.X);	//逆変換
+	Aout->Z = MR(Aoutm.Z);	//逆変換
 }
