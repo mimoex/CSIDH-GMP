@@ -96,7 +96,7 @@ void inv_fp(const mpz_class& a, mpz_class* c)
 
 	}
 	else {
-		pow_fp(a, para.mod - 2, c);
+		pow_mon(a, para.mod - 2, c);
 	}
 
 }
@@ -104,8 +104,13 @@ void inv_fp(const mpz_class& a, mpz_class* c)
 
 void div_fp(const mpz_class& a, const mpz_class& b, mpz_class* c)
 {
-	inv_fp(b, c);
-	mul_fp(a, *c, c);
+	mpz_class tempmon;
+	mpz_class amon, bmon;
+	amon = MR(a * para.R2);
+	bmon = MR(b * para.R2);
+	inv_fp(bmon, &tempmon);
+	mul_mon(amon, tempmon, &tempmon);
+	*c = MR(tempmon);
 }
 
 //有限体pから乱数生成
