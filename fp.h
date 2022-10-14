@@ -30,11 +30,12 @@ struct mon {
 	const mpz_class inv4;
 	//4*(sqrt(mod))
 	const mpz_class sqrt4;
-	
+
 	const size_t nbit;
 	const mpz_class R;
 	const mpz_class R2;
 	const mpz_class nr;
+	const mpz_class mrR2;
 };
 
 extern mon para;
@@ -70,3 +71,9 @@ void genCSIDHkey(seckey* K);
 bool validate(const mpz_class& a);
 
 mpz_class action(const mpz_class& A, const seckey& Key);
+
+
+mpz_class MR(const mpz_class& t);
+
+void mul_mon(const mpz_class& a, const mpz_class& b, mpz_class* c);
+void pow_mon(const mpz_class& a, const mpz_class& b, mpz_class* c);
