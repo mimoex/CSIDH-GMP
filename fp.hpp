@@ -15,6 +15,17 @@ struct Fp {
         uint64_t buf[N * 2];
     };
 
+    //montgomery剰余乗算
+    static Fp inv4;
+    //4*(sqrt(mod))
+    static Fp sqrt4;
+
+    static size_t nbit;
+    static Fp R;
+    static Fp R2;
+    static Fp nr;
+    static Fp mrR2;
+
 
     //足し算 Mod p OK
     static void add(Fp& z, const Fp& x, const Fp& y)
@@ -47,25 +58,26 @@ struct Fp {
         }
     }
 
-    //MR
+    //MR    In:1024bit, Out:512bit
     static void MR(Fp& z, const FpDbl& x)
     {
         uint64_t temp[N * 2];
-        mpn_mul_n(temp, x.buf, para.nr, N);
-        mpn_and_n(temp, temp, p.MR, N);
-        mpn_mul_n(temp, temp, p.p, N);
+        mpn_and_n(temp, x.buf, p.R.buf, N);
+        mpn_mul_n(temp, temp, p.nr.buf, N);
+        mpn_and_n(temp, temp, p.R.buf, N);
+        mpn_mul_n(temp, temp, p.p.buf, N);
         mpn_add_n(temp, temp, x.buf, N);
         mpn_rshift(temp, temp, p.nbit, N);
-        if (mpn_cmp(temp, p.p, N) >= 0)
-            mpn_sub_n(temp, temp, p.p, N);
-        z.buf = temp;
+        if (mpn_cmp(temp, p.p.buf, N) >= 0)
+            mpn_sub_n(temp, temp, p.p.buf, N);
+        *z.buf = *temp;
     }
 
     //掛け算 Mod p
     static void mul(Fp& z, const Fp& x, const Fp& y)
     {
-        uint64_t temp[N * 2];;
-        mpn_mul_n(temp, x.buf, y.buf, N);
+        FpDbl temp;
+        mpn_mul_n(temp.buf, x.buf, y.buf, N*2);
         MR(z, temp);
     }
 
