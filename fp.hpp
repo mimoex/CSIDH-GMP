@@ -32,16 +32,9 @@ struct Fp {
     {
         mpz_class result;
         mpn_add_n(z.buf, x.buf, y.buf, N);
-        mpz_import(result.get_mpz_t(), Fp::N, -1, 8, 0, 0, z.buf);
-        cout << result << endl;
 
         if (mpn_cmp(z.buf, p.buf, N) >= 0) {
-            cout << "test" << endl;
             mpn_sub_n(z.buf, z.buf, p.buf, N);
-
-
-            mpz_import(result.get_mpz_t(), Fp::N, -1, 8, 0, 0, z.buf);
-            cout << result << endl;
         }
     }
 
@@ -58,12 +51,14 @@ struct Fp {
         }
     }
 
+
     //MR    In:1024bit, Out:512bit
     static void MR(Fp& z, const FpDbl& x)
     {
         mpz_class test;
-        uint64_t temp[N * 2];
+        uint64_t temp[N * 2]{};
         uint64_t temp512[N]{};
+
         mpn_and_n(temp512, x.buf, p.R.buf, N * 2);
         mpn_mul_n(temp, temp512, p.nr.buf, N);
         mpn_and_n(temp512, temp, p.R.buf, N * 2);
@@ -75,22 +70,28 @@ struct Fp {
             temp512[i] = temp[i+7];
         }
 
-        if (mpn_cmp(temp512, p.p.buf, N) >= 0)
-            mpn_sub_n(temp512, temp512, p.p.buf, N);
-
-        *z.buf = *temp512;
+        if (mpn_cmp(temp512, p.p.buf, N) >= 0){
+            mpn_sub_n(z.buf, temp512, p.p.buf, N);
+        } else {
+            for (int i = 0; i < N; i++) {
+                z.buf[i] = temp512[i];
+            }
+        }
     }
 
     //掛け算 Mod p
     static void mul(Fp& z, const Fp& x, const Fp& y)
     {
+        mpz_class test;
         Fp temp512{};
         FpDbl temp{};
         mpn_mul_n(temp.buf, x.buf, y.buf, N);
         MR(temp512,temp);
-        mpn_mul_n(temp.buf, z.buf, p.R2.buf, N);
-        MR(z,temp);
+        mpn_mul_n(temp.buf, temp512.buf, p.R2.buf, N);
+        MR(z, temp);
+
     }
 
     static Fp p;
+
 };
