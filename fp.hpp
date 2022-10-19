@@ -69,13 +69,11 @@ struct Fp {
         mpn_and_n(temp512, temp, p.R.buf, N * 2);
         mpn_mul_n(temp, temp512, p.p.buf, N);
         mpn_add_n(temp, temp, x.buf, N * 2);
+        mpn_rshift(temp, temp, N*2, p.nbit);
 
-        mpn_rshift(temp, temp, N * 2, p.nbit);  //計算が合わない…
-
-        *temp512 = *temp;
-        mpz_import(test.get_mpz_t(), N, -1, 8, 0, 0, temp512);
-        cout << test << endl;
-        cout << endl;
+        for (int i = 0; i < 8; i++) {
+            temp512[i] = temp[i+7];
+        }
 
         if (mpn_cmp(temp512, p.p.buf, N) >= 0)
             mpn_sub_n(temp512, temp512, p.p.buf, N);
@@ -86,9 +84,12 @@ struct Fp {
     //掛け算 Mod p
     static void mul(Fp& z, const Fp& x, const Fp& y)
     {
-        FpDbl temp;
+        Fp temp512{};
+        FpDbl temp{};
         mpn_mul_n(temp.buf, x.buf, y.buf, N);
-        MR(z, temp);
+        MR(temp512,temp);
+        mpn_mul_n(temp.buf, z.buf, p.R2.buf, N);
+        MR(z,temp);
     }
 
     static Fp p;
