@@ -10,17 +10,15 @@ struct Fp {
     int v;
     Fp(int _v=0) : v(_v) {}
     static const int N = 8; //64bit * 8 =512bit
-    uint64_t buf[N]={};
+    uint64_t buf[N]{};
 
     struct FpDbl {
-        uint64_t buf[N * 2];
+        uint64_t buf[N * 2]{};
     };
 
     //montgomery剰余乗算
     static Fp inv4;
-    //4*(sqrt(mod))
-    static Fp sqrt4;
-
+    static Fp sqrt4;    //4*(sqrt(mod))
     static size_t nbit;
     static Fp R;
     static Fp R2;
@@ -39,7 +37,6 @@ struct Fp {
     //引き算 Mod p OK
     static void sub(Fp& z, const Fp& x, const Fp& y)
     {
-
         if (mpn_cmp(x.buf, y.buf, N) >= 0) {
             mpn_sub_n(z.buf, x.buf, y.buf, N);
         } else {
@@ -47,7 +44,6 @@ struct Fp {
             mpn_sub_n(z.buf, z.buf, y.buf, N);
         }
     }
-
 
     //MR    In:1024bit, Out:512bit
     static void MR(Fp& z, const FpDbl& x)
@@ -85,7 +81,6 @@ struct Fp {
         MR(temp512,temp);
         mpn_mul_n(temp.buf, temp512.buf, p.R2.buf, N);
         MR(z, temp);
-
     }
 
     //掛け算 Mod p(Montgomeryで返す)
@@ -100,7 +95,8 @@ struct Fp {
     static void pow(Fp& z, const Fp& x, const Fp& y)
     {
         Fp result;
-        FpDbl R2_temp, result_temp;
+        FpDbl R2_temp{}, result_temp;
+
         for (int i = 0; i < N; i++) {
             R2_temp.buf[i] = p.R2.buf[i];
         }
@@ -119,16 +115,16 @@ struct Fp {
         z = result;
     }
 
-    static void inv(Fp& z, const Fp& x)
+    static void inv(Fp& z, const Fp& y)
     {
-        if (mpn_zero_p(x.buf, N))
+        if (mpn_zero_p(y.buf, N))
             throw std::range_error("Divided by zero.");
         else {
             Fp modhiku2;
             uint64_t ni[N]{};
             ni[0] = 2;
-            mpn_sub_n(modhiku2.buf, p.p.buf, ni,N);
-            pow(z, x, modhiku2);
+            mpn_sub_n(modhiku2.buf, p.p.buf, ni, N);
+            pow(z, y, modhiku2);
         }
 
     }
