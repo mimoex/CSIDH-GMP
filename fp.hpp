@@ -6,6 +6,10 @@
 
 using namespace std;
 
+struct Point {
+    Fp X, Z;	//inf is (0, 1)
+};
+
 struct Fp {
     int v;
     Fp(int _v=0) : v(_v) {}
@@ -23,7 +27,10 @@ struct Fp {
     static Fp R;
     static Fp R2;
     static Fp nr;
+
     static Fp mrR2;
+    static Fp MR2;  //2* para.R2
+    static Fp MR4;  //4* para.R2
 
 
     //足し算 Mod p OK
@@ -71,8 +78,34 @@ struct Fp {
         }
     }
 
+    //MR    In:512bit, Out:512bit
+    static void MR512(Fp& z, const Fp& x)
+    {
+        uint64_t temp[N * 2]{}; //初期化しろ！
+        uint64_t temp512[N]{};
+
+        mpn_and_n(temp512, x.buf, p.R.buf, N);
+        mpn_mul_n(temp, temp512, p.nr.buf, N);
+        mpn_and_n(temp512, temp, p.R.buf, N * 2);
+        mpn_mul_n(temp, temp512, p.p.buf, N);
+        mpn_add_n(temp, temp, x.buf, N * 2);
+        mpn_rshift(temp, temp, N * 2, p.nbit);
+
+        for (int i = 0; i < 8; i++) {
+            temp512[i] = temp[i + 7];
+        }
+
+        if (mpn_cmp(temp512, p.p.buf, N) >= 0)
+            mpn_sub_n(z.buf, temp512, p.p.buf, N);
+        else {
+            for (int i = 0; i < N; i++) {
+                z.buf[i] = temp512[i];
+            }
+        }
+    }
+
     //掛け算 Mod p(1回で完結)
-    static void mul(Fp& z, const Fp& x, const Fp& y)
+    static void mul_test(Fp& z, const Fp& x, const Fp& y)
     {
         mpz_class test;
         Fp temp512{};
@@ -84,11 +117,19 @@ struct Fp {
     }
 
     //掛け算 Mod p(Montgomeryで返す)
-    static void mul_mon(Fp& z, const Fp& x, const Fp& y)
+    static void mul(Fp& z, const Fp& x, const Fp& y)
     {
         Fp temp512{};
         FpDbl temp{};
         mpn_mul_n(temp.buf, x.buf, y.buf, N);
+        MR(z, temp);
+    }
+
+    static void sqr(Fp& z, const Fp& x)
+    {
+        Fp temp512{};
+        FpDbl temp{};
+        mpn_sqr(temp.buf, x.buf, N);
         MR(z, temp);
     }
 
@@ -140,7 +181,7 @@ struct Fp {
         MR(xmon, x_temp);
         MR(ymon, y_temp);
         inv(temp, ymon);
-        mul_mon(xmon, xmon, temp);
+        mul(xmon, xmon, temp);
         for (int i = 0; i < N; i++) {
             temp1024.buf[i] = xmon.buf[i];
         }
