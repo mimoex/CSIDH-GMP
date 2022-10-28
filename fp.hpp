@@ -3,9 +3,7 @@
 #include <gmp.h>
 #include <gmpxx.h>
 #include <chrono>
-
-using namespace std;
-
+#include <random>
 
 struct Fp {
     int v;
@@ -19,7 +17,7 @@ struct Fp {
 
     //montgomery剰余乗算
     static Fp inv4;
-    static Fp sqrt4;    //4*(sqrt(mod))
+    static mpz_class sqrt4;    //4*(sqrt(mod))
     static size_t nbit;
     static Fp R;
     static Fp R2;
@@ -28,6 +26,7 @@ struct Fp {
     static Fp mrR2;
     static Fp MR2;  //2* para.R2
     static Fp MR4;  //4* para.R2
+    static mpz_class modmpz;
 
 
     //足し算 Mod p OK
@@ -130,7 +129,7 @@ struct Fp {
         MR(z, temp);
     }
 
-    static void pow(Fp& z, const Fp& x, const Fp& y)
+    static void pow(Fp& z, const Fp& x, const mpz_class& y)
     {
         Fp result;
         FpDbl R2_temp{}, result_temp;
@@ -140,12 +139,10 @@ struct Fp {
         }
         MR(result, R2_temp);
 
-        mpz_class y_mpz;
-        mpz_import(y_mpz.get_mpz_t(), Fp::N, -1, 8, 0, 0, y.buf);
         for (int i = nbit - 1; i >= 0; i--) {
             mpn_sqr(result_temp.buf, result.buf, N);
             MR(result, result_temp);
-            if (mpz_tstbit(y_mpz.get_mpz_t(), i) == 1) {
+            if (mpz_tstbit(y.get_mpz_t(), i) == 1) {
                 mpn_mul_n(result_temp.buf, result.buf, x.buf, N);
                 MR(result, result_temp);
             }
@@ -158,10 +155,8 @@ struct Fp {
         if (mpn_zero_p(y.buf, N))
             throw std::range_error("Divided by zero.");
         else {
-            Fp modhiku2;
-            uint64_t ni[N]{};
-            ni[0] = 2;
-            mpn_sub_n(modhiku2.buf, p.p.buf, ni, N);
+            mpz_class modhiku2;
+            modhiku2 = modmpz - 2;
             pow(z, y, modhiku2);
         }
 
@@ -178,14 +173,34 @@ struct Fp {
         MR(xmon, x_temp);
         MR(ymon, y_temp);
         inv(temp, ymon);
-        mul(xmon, xmon, temp);
-        for (int i = 0; i < N; i++) {
-            temp1024.buf[i] = xmon.buf[i];
+        mul(temp, xmon, temp);
+        for (int i 
+            ; i < N; i++) {
+            temp1024.buf[i] = temp.buf[i];
         }
         MR(z, temp1024);
     }
 
     static Fp p;
+
+    //有限体pから乱数生成
+    static void random_fp(Fp& z)
+    {
+        Fp temp;
+        //std::random_device rnd;
+        //gmp_randclass r(gmp_randinit_default);
+        //r.seed(rnd());
+
+        while (1) {
+            mpn_random(temp.buf, N);
+
+            //testete = r.get_z_bits(nbit);
+            if ( mpn_cmp(temp.buf, p.buf, N) < 0 ){
+                z = temp;
+                break;
+            }
+        }
+    }
 
 };
 

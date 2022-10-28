@@ -88,7 +88,7 @@ void xDBLADDmon(const Point& Pm, const Point& Qm, const Point& Rm, const Point& 
 Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 	Point x0, Ap24_1;
 	Point x0m, x1m, Pm, Ap24_1m;
-	Fp::FpDbl multemp{};
+	Fp::FpDbl multemp;
 	Fp two;
 
 	mpn_mul_n(multemp.buf, P.X.buf, Fp::p.R2.buf, Fp::N);
@@ -138,6 +138,7 @@ Fp calc_twist(const Fp& a, const Fp& x) {
 	Fp::add(temp3, temp2, Fp::p.mrR2); // x^2 + ax + 1
 	Fp::mul(result, temp3, x_mont); // x^3 + ax^2 + x
 	Fp::MR512(result, result);
+	return result;
 }
 
 void Evaluation(const Point& Pm, const Point& Qm,
