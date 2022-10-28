@@ -11,7 +11,7 @@ Point Montgomery_ADDmon(const Point& Pm, const Point& Qm, const Point& Rm) {
 	Fp::add(C, Pm.X, Pm.Z);
 	Fp::sub(D, Pm.X, Pm.Z);
 	mpn_mul_n(multemp.buf, D.buf, A.buf, Fp::N);
-	Fp::MR(DA,multemp);
+	Fp::MR(DA, multemp);
 	mpn_mul_n(multemp.buf, B.buf, C.buf, Fp::N);
 	Fp::MR(CB, multemp);
 	Fp::add(temp1, DA, CB);
@@ -137,7 +137,7 @@ Fp calc_twist(const Fp& a, const Fp& x) {
 	Fp::mul(temp2, temp1, x_mont); // x^2 + ax
 	Fp::add(temp3, temp2, Fp::p.mrR2); // x^2 + ax + 1
 	Fp::mul(result, temp3, x_mont); // x^3 + ax^2 + x
-	Fp::MR512(result,result);
+	Fp::MR512(result, result);
 }
 
 void Evaluation(const Point& Pm, const Point& Qm,

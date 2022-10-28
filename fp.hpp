@@ -6,9 +6,6 @@
 
 using namespace std;
 
-struct Point {
-    Fp X, Z;	//inf is (0, 1)
-};
 
 struct Fp {
     int v;
@@ -190,4 +187,8 @@ struct Fp {
 
     static Fp p;
 
+};
+
+struct Point {
+    Fp X, Z;
 };
