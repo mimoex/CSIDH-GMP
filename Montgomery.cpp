@@ -85,10 +85,11 @@ void xDBLADDmon(const Point& Pm, const Point& Qm, const Point& Rm, const Point& 
 }
 
 //モンゴメリ曲線のスカラー倍
-Point xMUL(const Point& P, const Point& A_1, const Fp& n) {
+Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 	Point x0, Ap24_1;
 	Point x0m, x1m, Pm, Ap24_1m;
-	Fp::FpDbl multemp;
+	Fp::FpDbl multemp{};
+	Fp two;
 
 	mpn_mul_n(multemp.buf, P.X.buf, Fp::p.R2.buf, Fp::N);
 	Fp::MR(Pm.X, multemp);
@@ -101,7 +102,8 @@ Point xMUL(const Point& P, const Point& A_1, const Fp& n) {
 
 	//a24の計算
 	Ap24_1.Z.buf[0] = 1;
-	Fp::add(Ap24_1.X, A_1.X, 2);
+	two.buf[0] = 2;
+	Fp::add(Ap24_1.X, A_1.X, two);
 
 	Fp::mul(Ap24_1.X, Ap24_1.X, Fp::p.inv4);
 
@@ -110,14 +112,12 @@ Point xMUL(const Point& P, const Point& A_1, const Fp& n) {
 
 	x1m = xDBLmon(Pm, Ap24_1m);
 
-	mpz_class scolar;
-	mpz_import(scolar.get_mpz_t(), Fp::N, -1, 8, 0, 0, n.buf);
 
 	size_t bit_size;
-	bit_size = mpz_sizeinbase(scolar.get_mpz_t(), 2);
+	bit_size = mpz_sizeinbase(n.get_mpz_t(), 2);
 
 	for (int i = bit_size - 2; i >= 0; i--) {
-		if (mpz_tstbit(scolar.get_mpz_t(), i) == 0) xDBLADDmon(x0m, x1m, Pm, Ap24_1m, x0m, x1m);
+		if (mpz_tstbit(n.get_mpz_t(), i) == 0) xDBLADDmon(x0m, x1m, Pm, Ap24_1m, x0m, x1m);
 		else xDBLADDmon(x1m, x0m, Pm, Ap24_1m, x1m, x0m);
 	}
 	Fp::MR512(x0.X, x0m.X);
