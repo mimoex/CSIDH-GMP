@@ -1,21 +1,19 @@
 #include "CSIDH.hpp"
 
-using namespace std;
-
 int sign(const int& x) { return (x > 0) - (x < 0); }
 
 void genCSIDHkey(seckey* K)
 {
-    random_device rd;
-    default_random_engine eng(rd());
-    uniform_int_distribution<int> distr(-5, 5);  //-5から5までの乱数を生成
+    std::random_device rd;
+    std::default_random_engine eng(rd());
+    std::uniform_int_distribution<int> distr(-5, 5);  //-5から5までの乱数を生成
 
     for (int i = 0; i < l; i++) K->e[i] = distr(eng);
 }
 
 //Algorithm 1: Verifying supersingularity.
 //CSIDH論文 p15
-bool validate(const Fp& a) {
+bool validate(const mpz_class& a) {
     mpz_class k, d=1, mod;
 
     Fp one;
@@ -26,29 +24,28 @@ bool validate(const Fp& a) {
 
     Point P, Q, temp_point, A_1;
 
-    A_1.X = a;
+    mpz_export(&A_1.X.buf, NULL, -1, 8, 0, 0, a.get_mpz_t());
+    //A_1.X = a;
     A_1.Z = one;
 
     P.X = x;
     P.Z = one;
 
-    mpz_import(mod.get_mpz_t(), Fp::N, -1, 8, 0, 0, Fp::p.buf);
-
     bool isSupersingular = false;
     for (int i = 0; i < Fp::N; i++) {
-        k = mod + 1;
+        k = Fp::modmpz + 1;
         k /= primes[i];
 
         Q = xMUL(P, A_1, k);
 
         k = primes[i];
         temp_point = xMUL(Q, A_1, k);
-        if (!mpn_zero_p(temp_point.Z.buf, Fp::N)) {
+        if (!(mpn_zero_p(temp_point.Z.buf, Fp::N))) {
             isSupersingular = false;
             break;
         }
 
-        if (!mpn_zero_p(Q.Z.buf, Fp::N))
+        if (!(mpn_zero_p(Q.Z.buf, Fp::N)))
             d *= primes[i];
 
         if (d > Fp::sqrt4) {
@@ -60,8 +57,8 @@ bool validate(const Fp& a) {
 }
 
 
-Fp action(const Fp& A, const seckey& Key) {
-    mpz_class mod, k, p_mul, q_mul, rhs_mpz;
+mpz_class action(const mpz_class& A, const seckey& Key) {
+    mpz_class mod, k, p_mul, q_mul, rhs_mpz, APointX_result;
 
     mpz_import(mod.get_mpz_t(), Fp::N, -1, 8, 0, 0, Fp::p.buf);
 
@@ -72,7 +69,8 @@ Fp action(const Fp& A, const seckey& Key) {
     Point P, Q, R, temp1_point, temp2_point, A_point;
 
     int S[l], s;
-    A_point.X = A;
+    mpz_export(&A_point.X.buf, NULL, -1, 8, 0, 0, A.get_mpz_t());
+    //A_point.X = A;
     A_point.Z = one;
 
     int e[l]{};
@@ -93,6 +91,7 @@ Fp action(const Fp& A, const seckey& Key) {
 
     while (flag) {
         Fp::random_fp(x);
+
         rhs = calc_twist(A_point.X, x);
         mpz_import(rhs_mpz.get_mpz_t(), Fp::N, -1, 8, 0, 0, rhs.buf);
 
@@ -127,8 +126,8 @@ Fp action(const Fp& A, const seckey& Key) {
 
             q_mul = k / primes[i];
 
-            //cout << "y^2 = x^3 + " << A_point.X << "*x^2 + x" << endl;
             R = xMUL(Q, A_point, q_mul);
+
             if(mpn_zero_p(R.Z.buf, Fp::N))
                 continue;
 
@@ -143,8 +142,6 @@ Fp action(const Fp& A, const seckey& Key) {
 
         }
 
-
-
         flag = false;
         for (int i = 0; i < l; i++) {
             if (e[i] != 0) {
@@ -153,6 +150,6 @@ Fp action(const Fp& A, const seckey& Key) {
             }
         }
     }
-
-    return A_point.X;
+    mpz_import(APointX_result.get_mpz_t(), Fp::N, -1, 8, 0, 0, A_point.X.buf);
+    return APointX_result;
 }

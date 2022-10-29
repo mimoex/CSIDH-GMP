@@ -2,7 +2,7 @@
 
 // https://www.hyperelliptic.org/EFD/g1p/auto-montgom-xz.html#diffadd-dadd-1987-m-3
 Point Montgomery_ADDmon(const Point& Pm, const Point& Qm, const Point& Rm) {
-	Fp A, B, C, D, DA, CB, temp1, temp2;
+	Fp A, B, C, D, DA, CB, temp1, temp2, temp3, temp4;
 	Fp::FpDbl multemp;
 	Point resultm;
 
@@ -10,50 +10,45 @@ Point Montgomery_ADDmon(const Point& Pm, const Point& Qm, const Point& Rm) {
 	Fp::sub(B, Qm.X, Qm.Z);
 	Fp::add(C, Pm.X, Pm.Z);
 	Fp::sub(D, Pm.X, Pm.Z);
-	mpn_mul_n(multemp.buf, D.buf, A.buf, Fp::N);
-	Fp::MR(DA, multemp);
-	mpn_mul_n(multemp.buf, B.buf, C.buf, Fp::N);
-	Fp::MR(CB, multemp);
+	Fp::mul(DA, D, A);
+	Fp::mul(CB, B, C);
 	Fp::add(temp1, DA, CB);
-	mpn_sqr(multemp.buf, temp1.buf, Fp::N);
-	Fp::MR(temp1, multemp);
-	mpn_mul_n(multemp.buf, Rm.Z.buf, temp1.buf, Fp::N);
-	Fp::MR(resultm.X, multemp);
-
-	Fp::sub(temp2, DA, CB);
-	mpn_sqr(multemp.buf, temp2.buf, Fp::N);
-	Fp::MR(temp2, multemp);
-	mpn_mul_n(multemp.buf, Rm.X.buf, temp2.buf, Fp::N);
-	Fp::MR(resultm.Z, multemp);
+	Fp::sqr(temp2, temp1);
+	Fp::mul(resultm.X, Rm.Z, temp2);
+	Fp::sub(temp3, DA, CB);
+	Fp::sqr(temp4, temp3);
+	Fp::mul(resultm.Z, Rm.X, temp4);
 	return resultm;
 }
 
 // https://www.hyperelliptic.org/EFD/g1p/auto-montgom-xz.html#doubling-dbl-1987-m-2
 Point xDBLmon(const Point& Pm, const Point& Ap24m)
 {
-	Fp t0, t1;
-	Fp::FpDbl multemp;
+	Fp t0, t1, t2, t3;
+	Fp::FpDbl temp1, temp2, temp3, temp4, temp5, temp6;
 	Point resultm;
 
 	Fp::sub(t0, Pm.X, Pm.Z);
 	Fp::add(t1, Pm.X, Pm.Z);
-	mpn_sqr(multemp.buf, t0.buf, Fp::N);
-	Fp::MR(t0, multemp);
+	mpn_sqr(temp1.buf, t0.buf, Fp::N);
+	Fp::MR(t0, temp1);
 
-	mpn_sqr(multemp.buf, t1.buf, Fp::N);
-	Fp::MR(t1, multemp);
-	mpn_mul_n(multemp.buf, Ap24m.Z.buf, t0.buf, Fp::N);
-	Fp::MR(resultm.Z, multemp);
-	mpn_mul_n(multemp.buf, resultm.Z.buf, t1.buf, Fp::N);
-	Fp::MR(resultm.X, multemp);
+	mpn_sqr(temp2.buf, t1.buf, Fp::N);
+	Fp::MR(t1, temp2);
 
-	Fp::sub(t1, t1, t0);
-	mpn_mul_n(multemp.buf, Ap24m.X.buf, t1.buf, Fp::N);
-	Fp::MR(t0, multemp);
-	Fp::add(resultm.Z, resultm.Z, t0);
+	mpn_mul_n(temp3.buf, Ap24m.Z.buf, t0.buf, Fp::N);
+	Fp::MR(resultm.Z, temp3);
+	mpn_mul_n(temp4.buf, resultm.Z.buf, t1.buf, Fp::N);
+	Fp::MR(resultm.X, temp4);
 
-	mpn_mul_n(multemp.buf, resultm.Z.buf, t1.buf, Fp::N);
-	Fp::MR(resultm.Z, multemp);
+	Fp::sub(t2, t1, t0);
+	mpn_mul_n(temp5.buf, Ap24m.X.buf, t2.buf, Fp::N);
+	Fp::MR(t3, temp5);
+
+	Fp::add(resultm.Z, resultm.Z, t3);
+
+	mpn_mul_n(temp6.buf, resultm.Z.buf, t2.buf, Fp::N);
+	Fp::MR(resultm.Z, temp6);
 	return resultm;
 }
 
@@ -65,9 +60,10 @@ void xDBLADDmon(const Point& Pm, const Point& Qm, const Point& Rm, const Point& 
 	Fp::sub(t1, Pm.X, Pm.Z);
 	Fp::sqr(DBLout.X, t0);
 	Fp::sub(t2, Qm.X, Qm.Z);
+
 	Fp::add(ADDout.X, Qm.X, Qm.Z);
 	Fp::mul(t0, t0, t2);
-	Fp::mul(DBLout.Z, t1, t1);
+	Fp::sqr(DBLout.Z, t1);
 
 	Fp::mul(t1, t1, ADDout.X);
 	Fp::sub(t2, DBLout.X, DBLout.Z);
@@ -86,32 +82,30 @@ void xDBLADDmon(const Point& Pm, const Point& Qm, const Point& Rm, const Point& 
 
 //モンゴメリ曲線のスカラー倍
 Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
-	Point x0, Ap24_1;
+	Point x0, Ap24_1, Ap24_0;
 	Point x0m, x1m, Pm, Ap24_1m;
 	Fp::FpDbl multemp;
 	Fp two;
 
-	mpn_mul_n(multemp.buf, P.X.buf, Fp::p.R2.buf, Fp::N);
-	Fp::MR(Pm.X, multemp);
-	mpn_mul_n(multemp.buf, P.Z.buf, Fp::p.R2.buf, Fp::N);
-	Fp::MR(Pm.Z, multemp);
+	Fp::mul(Pm.X, P.X, Fp::p.R2);
+	Fp::mul(Pm.Z, P.Z, Fp::p.R2);
 
 	//x0 = P;
 	x0m.X = Pm.X;
 	x0m.Z = Pm.Z;
 
 	//a24の計算
-	Ap24_1.Z.buf[0] = 1;
+	Ap24_0.Z.buf[0] = 1;
 	two.buf[0] = 2;
-	Fp::add(Ap24_1.X, A_1.X, two);
+	Fp::add(Ap24_0.X, A_1.X, two);
 
-	Fp::mul(Ap24_1.X, Ap24_1.X, Fp::p.inv4);
+	Fp::mul_test(Ap24_1.X, Ap24_0.X, Fp::p.inv4);
+	Ap24_1.Z.buf[0] = 1;
 
 	Fp::mul(Ap24_1m.X, Ap24_1.X, Fp::p.R2);
 	Fp::mul(Ap24_1m.Z, Ap24_1.Z, Fp::p.R2);
 
 	x1m = xDBLmon(Pm, Ap24_1m);
-
 
 	size_t bit_size;
 	bit_size = mpz_sizeinbase(n.get_mpz_t(), 2);
@@ -120,6 +114,7 @@ Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 		if (mpz_tstbit(n.get_mpz_t(), i) == 0) xDBLADDmon(x0m, x1m, Pm, Ap24_1m, x0m, x1m);
 		else xDBLADDmon(x1m, x0m, Pm, Ap24_1m, x1m, x0m);
 	}
+
 	Fp::MR512(x0.X, x0m.X);
 	Fp::MR512(x0.Z, x0m.Z);
 	return x0;
@@ -127,17 +122,18 @@ Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 
 //モンゴメリ曲線右辺の計算
 Fp calc_twist(const Fp& a, const Fp& x) {
-	Fp result, temp1, temp2, temp3;
+	Fp result, temp1, temp2, temp3, temp4;
 	Fp a_mont, x_mont;
+
+	mpz_class t1, t2, t3, t4, t5, t6;
 
 	Fp::mul(a_mont, a, Fp::p.R2);
 	Fp::mul(x_mont, x, Fp::p.R2);
-
 	Fp::add(temp1, x_mont, a_mont);	// x+a
 	Fp::mul(temp2, temp1, x_mont); // x^2 + ax
 	Fp::add(temp3, temp2, Fp::p.mrR2); // x^2 + ax + 1
-	Fp::mul(result, temp3, x_mont); // x^3 + ax^2 + x
-	Fp::MR512(result, result);
+	Fp::mul(temp4, temp3, x_mont); // x^3 + ax^2 + x
+	Fp::MR512(result, temp4);
 	return result;
 }
 
@@ -156,10 +152,10 @@ Point mont2ed(const Point& P)
 {
 	// compute twisted Edwards curve coefficients
 	/* A = 2*(1+d)/(1-d) */
-	Point ed;
-	Fp::add(ed.Z, P.Z, P.Z);
-	Fp::add(ed.X, P.X, ed.Z);
-	Fp::sub(ed.Z, P.X, ed.Z);
+	Point t0, ed;
+	Fp::add(t0.Z, P.Z, P.Z);
+	Fp::add(ed.X, P.X, t0.Z);
+	Fp::sub(ed.Z, P.X, t0.Z);
 	return ed;
 }
 
@@ -169,7 +165,7 @@ void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k
 
 	Fp tmp0, tmp1, tmp2, Psum, Pdif;
 	Point ed, prod;
-	Point Am, Pm, Qm, Km, Ap24_C24m;
+	Point Am, Pm, Qm, Km, Ap24_C24m, temp1;
 	Point Aoutm, Poutm;
 
 	Fp::mul(Am.X, A.X, Fp::p.R2);
@@ -213,11 +209,10 @@ void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k
 		Fp::sub(tmp2, tmp0, tmp1);
 		Fp::mul(Qm.Z, Qm.Z, tmp2);
 	}
-
 	Evaluation(Pm, Qm, Pout->X, Pout->Z);	//in->montgomery, out->montgomery
 
 	//A faster way to the CSIDH p10くらい
-	ed = mont2ed(Am);
+	ed = mont2ed(Am);	//確認済み
 
 	Fp::pow(ed.X, ed.X, k);
 	Fp::pow(ed.Z, ed.Z, k);
@@ -235,9 +230,9 @@ void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k
 	Fp::mul(ed.X, ed.X, prod.Z);
 
 	// compute Montgomery params
-	Fp::add(Aoutm.X, ed.X, ed.Z);
+	Fp::add(temp1.X, ed.X, ed.Z);
 	Fp::sub(Aoutm.Z, ed.X, ed.Z);
-	Fp::add(Aoutm.X, Aoutm.X, Aoutm.X);
+	Fp::add(Aoutm.X, temp1.X, temp1.X);
 
 	Fp::MR512(Aout->X, Aoutm.X);	//逆変換
 	Fp::MR512(Aout->Z, Aoutm.Z);	//逆変換

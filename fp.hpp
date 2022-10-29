@@ -77,27 +77,14 @@ struct Fp {
     //MR    In:512bit, Out:512bit
     static void MR512(Fp& z, const Fp& x)
     {
-        uint64_t temp[N * 2]{}; //初期化しろ！
-        uint64_t temp512[N]{};
-
-        mpn_and_n(temp512, x.buf, p.R.buf, N);
-        mpn_mul_n(temp, temp512, p.nr.buf, N);
-        mpn_and_n(temp512, temp, p.R.buf, N * 2);
-        mpn_mul_n(temp, temp512, p.p.buf, N);
-        mpn_add_n(temp, temp, x.buf, N * 2);
-        mpn_rshift(temp, temp, N * 2, p.nbit);
+        FpDbl temp; //初期化しろ！
+        Fp temp512;
 
         for (int i = 0; i < 8; i++) {
-            temp512[i] = temp[i + 7];
+            temp.buf[i] = x.buf[i];
         }
 
-        if (mpn_cmp(temp512, p.p.buf, N) >= 0)
-            mpn_sub_n(z.buf, temp512, p.p.buf, N);
-        else {
-            for (int i = 0; i < N; i++) {
-                z.buf[i] = temp512[i];
-            }
-        }
+        MR(z, temp);
     }
 
     //掛け算 Mod p(1回で完結)
@@ -115,16 +102,16 @@ struct Fp {
     //掛け算 Mod p(Montgomeryで返す)
     static void mul(Fp& z, const Fp& x, const Fp& y)
     {
-        Fp temp512{};
-        FpDbl temp{};
+        Fp temp512;
+        FpDbl temp;
         mpn_mul_n(temp.buf, x.buf, y.buf, N);
         MR(z, temp);
     }
 
     static void sqr(Fp& z, const Fp& x)
     {
-        Fp temp512{};
-        FpDbl temp{};
+        Fp temp512;
+        FpDbl temp;
         mpn_sqr(temp.buf, x.buf, N);
         MR(z, temp);
     }
@@ -134,18 +121,11 @@ struct Fp {
         Fp result;
         FpDbl R2_temp{}, result_temp;
 
-        for (int i = 0; i < N; i++) {
-            R2_temp.buf[i] = p.R2.buf[i];
-        }
-        MR(result, R2_temp);
+        MR512(result, p.R2);
 
-        for (int i = nbit - 1; i >= 0; i--) {
-            mpn_sqr(result_temp.buf, result.buf, N);
-            MR(result, result_temp);
-            if (mpz_tstbit(y.get_mpz_t(), i) == 1) {
-                mpn_mul_n(result_temp.buf, result.buf, x.buf, N);
-                MR(result, result_temp);
-            }
+        for (int i = nbit-1; i >= 0; i--) {
+            sqr(result, result);
+            if (mpz_tstbit(y.get_mpz_t(), i) == 1) mul(result, result, x);
         }
         z = result;
     }
@@ -154,54 +134,39 @@ struct Fp {
     {
         if (mpn_zero_p(y.buf, N))
             throw std::range_error("Divided by zero.");
-        else {
-            mpz_class modhiku2;
-            modhiku2 = modmpz - 2;
-            pow(z, y, modhiku2);
-        }
-
+        else
+            pow(z, y, modmpz-2);
     }
 
     static void div(Fp& z, const Fp& x, const Fp& y)
     {
-        FpDbl x_temp{}, y_temp{},temp1024;
-        Fp temp,xmon,ymon;
+        FpDbl temp1024;
+        Fp temp,xmon,ymon,invy;
 
-        mpn_mul_n(x_temp.buf, x.buf, p.R2.buf, N);
-        mpn_mul_n(y_temp.buf, y.buf, p.R2.buf, N);
+        mul(xmon, x, p.R2);
+        mul(ymon, y, p.R2);
+        inv(invy, ymon);
+        mul(temp, xmon, invy);
 
-        MR(xmon, x_temp);
-        MR(ymon, y_temp);
-        inv(temp, ymon);
-        mul(temp, xmon, temp);
-        for (int i 
-            ; i < N; i++) {
-            temp1024.buf[i] = temp.buf[i];
-        }
-        MR(z, temp1024);
+        MR512(z, temp);
     }
-
-    static Fp p;
 
     //有限体pから乱数生成
     static void random_fp(Fp& z)
     {
         Fp temp;
-        //std::random_device rnd;
-        //gmp_randclass r(gmp_randinit_default);
-        //r.seed(rnd());
 
         while (1) {
             mpn_random(temp.buf, N);
 
-            //testete = r.get_z_bits(nbit);
-            if ( mpn_cmp(temp.buf, p.buf, N) < 0 ){
+            if (mpn_cmp(temp.buf, p.buf, N) < 0) {
                 z = temp;
                 break;
             }
         }
     }
 
+    static Fp p;
 };
 
 struct Point {
