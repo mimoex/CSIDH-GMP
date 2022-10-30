@@ -32,7 +32,7 @@ bool validate(const mpz_class& a) {
     P.Z = one;
 
     bool isSupersingular = false;
-    for (int i = 0; i < Fp::N; i++) {
+    for (int i = 0; i < l; i++) {
         k = Fp::modmpz + 1;
         k /= primes[i];
 
@@ -40,12 +40,12 @@ bool validate(const mpz_class& a) {
 
         k = primes[i];
         temp_point = xMUL(Q, A_1, k);
-        if (!(mpn_zero_p(temp_point.Z.buf, Fp::N))) {
+        if (mpn_zero_p(temp_point.Z.buf, Fp::N)==0) {
             isSupersingular = false;
             break;
         }
 
-        if (!(mpn_zero_p(Q.Z.buf, Fp::N)))
+        if ((mpn_zero_p(Q.Z.buf, Fp::N)) == 0)
             d *= primes[i];
 
         if (d > Fp::sqrt4) {
