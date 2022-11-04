@@ -1,6 +1,10 @@
 #include "CSIDH.hpp"
 
-int sign(const int& x) { return (x > 0) - (x < 0); }
+int sign(int x) {
+    if (x > 0) return 1;
+    if (x == 0) return 0;
+    return -1;
+}
 
 void genCSIDHkey(seckey* K)
 {
@@ -56,6 +60,14 @@ bool validate(const mpz_class& a) {
     return isSupersingular;
 }
 
+bool isZero(const int* e, int n)
+{
+    for (int i = 0; i < n; i++) {
+        if (e[i]) return false;
+    }
+    return true;
+}
+
 
 mpz_class action(const mpz_class& A, const seckey& Key) {
     mpz_class mod, k, p_mul, q_mul, rhs_mpz, APointX_result;
@@ -81,15 +93,7 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
 
     //Evaluating the class group action.
     //A faster way to the CSIDH p4 https://eprint.iacr.org/2018/782.pdf
-    bool flag = false;
-    for (int i = 0; i < l; i++) {
-        if (e[i] != 0) {
-            flag = true;
-            break;
-        }
-    }
-
-    while (flag) {
+    while (!isZero(e, l)) {
         Fp::random_fp(x);
 
         rhs = calc_twist(A_point.X, x);
@@ -142,13 +146,7 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
 
         }
 
-        flag = false;
-        for (int i = 0; i < l; i++) {
-            if (e[i] != 0) {
-                flag = true;
-                break;
-            }
-        }
+        if (isZero(e, l)) break;
     }
     mpz_import(APointX_result.get_mpz_t(), Fp::N, -1, 8, 0, 0, A_point.X.buf);
     return APointX_result;
