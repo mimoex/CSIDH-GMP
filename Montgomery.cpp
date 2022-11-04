@@ -30,25 +30,19 @@ Point xDBLmon(const Point& Pm, const Point& Ap24m)
 
 	Fp::sub(t0, Pm.X, Pm.Z);
 	Fp::add(t1, Pm.X, Pm.Z);
-	mpn_sqr(temp1.buf, t0.buf, Fp::N);
-	Fp::MR(t0, temp1);
+	Fp::sqr(t0, t0);
 
-	mpn_sqr(temp2.buf, t1.buf, Fp::N);
-	Fp::MR(t1, temp2);
+	Fp::sqr(t1, t1);
 
-	mpn_mul_n(temp3.buf, Ap24m.Z.buf, t0.buf, Fp::N);
-	Fp::MR(resultm.Z, temp3);
-	mpn_mul_n(temp4.buf, resultm.Z.buf, t1.buf, Fp::N);
-	Fp::MR(resultm.X, temp4);
+	Fp::mul(resultm.Z, Ap24m.Z, t0);
+	Fp::mul(resultm.X, resultm.Z, t1);
 
 	Fp::sub(t2, t1, t0);
-	mpn_mul_n(temp5.buf, Ap24m.X.buf, t2.buf, Fp::N);
-	Fp::MR(t3, temp5);
+	Fp::mul(t3, Ap24m.X, t2);
 
 	Fp::add(resultm.Z, resultm.Z, t3);
 
-	mpn_mul_n(temp6.buf, resultm.Z.buf, t2.buf, Fp::N);
-	Fp::MR(resultm.Z, temp6);
+	Fp::mul(resultm.Z, resultm.Z, t2);
 	return resultm;
 }
 
@@ -124,8 +118,6 @@ Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 Fp calc_twist(const Fp& a, const Fp& x) {
 	Fp result, temp1, temp2, temp3, temp4;
 	Fp a_mont, x_mont;
-
-	mpz_class t1, t2, t3, t4, t5, t6;
 
 	Fp::mul(a_mont, a, Fp::p.R2);
 	Fp::mul(x_mont, x, Fp::p.R2);
