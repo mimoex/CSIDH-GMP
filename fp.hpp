@@ -54,9 +54,9 @@ struct Fp {
         uint64_t temp[N * 2]{}; //初期化しろ！
         uint64_t temp512[N]{};
 
-        mpn_and_n(temp512, x.buf, p.R.buf, N * 2);
+        mpn_and_n(temp512, x.buf, p.R.buf, N);
         mpn_mul_n(temp, temp512, p.nr.buf, N);
-        mpn_and_n(temp512, temp, p.R.buf, N * 2);
+        mpn_and_n(temp512, temp, p.R.buf, N);
         mpn_mul_n(temp, temp512, p.p.buf, N);
         mpn_add_n(temp, temp, x.buf, N * 2);
         mpn_rshift(temp, temp, N*2, p.nbit);
@@ -119,7 +119,6 @@ struct Fp {
     static void pow(Fp& z, const Fp& x, const mpz_class& y)
     {
         Fp result;
-        FpDbl R2_temp{}, result_temp;
 
         MR512(result, p.R2);
 
