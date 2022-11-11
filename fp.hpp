@@ -54,15 +54,15 @@ struct Fp {
         uint64_t temp[N * 2]{}; //初期化しろ！
         uint64_t temp512[N]{};
 
-        mpn_and_n(temp512, x.buf, p.R.buf, N);
-        mpn_mul_n(temp, temp512, p.nr.buf, N);
-        mpn_and_n(temp512, temp, p.R.buf, N);
+        mpn_mul_n(temp, x.buf, p.nr.buf, N);
+        for (int i = 0; i < 8; i++) { //上位512bitのみ書き込み
+            temp512[i] = temp[i];
+        }
         mpn_mul_n(temp, temp512, p.p.buf, N);
         mpn_add_n(temp, temp, x.buf, N * 2);
-        mpn_rshift(temp, temp, N*2, p.nbit);
 
         for (int i = 0; i < 8; i++) {
-            temp512[i] = temp[i+7];
+            temp512[i] = temp[i+8];
         }
 
         if (mpn_cmp(temp512, p.p.buf, N) >= 0)
@@ -78,7 +78,6 @@ struct Fp {
     static void MR512(Fp& z, const Fp& x)
     {
         FpDbl temp; //初期化しろ！
-        Fp temp512;
 
         for (int i = 0; i < 8; i++) {
             temp.buf[i] = x.buf[i];
@@ -102,7 +101,6 @@ struct Fp {
     //掛け算 Mod p(Montgomeryで返す)
     static void mul(Fp& z, const Fp& x, const Fp& y)
     {
-        Fp temp512;
         FpDbl temp;
         mpn_mul_n(temp.buf, x.buf, y.buf, N);
         MR(z, temp);
