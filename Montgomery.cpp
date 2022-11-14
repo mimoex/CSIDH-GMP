@@ -31,17 +31,12 @@ Point xDBLmon(const Point& Pm, const Point& Ap24m)
 	Fp::sub(t0, Pm.X, Pm.Z);
 	Fp::add(t1, Pm.X, Pm.Z);
 	Fp::sqr(t0, t0);
-
 	Fp::sqr(t1, t1);
-
 	Fp::mul(resultm.Z, Ap24m.Z, t0);
 	Fp::mul(resultm.X, resultm.Z, t1);
-
 	Fp::sub(t2, t1, t0);
 	Fp::mul(t3, Ap24m.X, t2);
-
 	Fp::add(resultm.Z, resultm.Z, t3);
-
 	Fp::mul(resultm.Z, resultm.Z, t2);
 	return resultm;
 }
@@ -119,6 +114,8 @@ Fp calc_twist(const Fp& a, const Fp& x) {
 	Fp result, temp1, temp2, temp3, temp4;
 	Fp a_mont, x_mont;
 
+	mpz_class t1, t2, t3, t4, t5, t6;
+
 	Fp::mul(a_mont, a, Fp::p.R2);
 	Fp::mul(x_mont, x, Fp::p.R2);
 	Fp::add(temp1, x_mont, a_mont);	// x+a
@@ -129,34 +126,12 @@ Fp calc_twist(const Fp& a, const Fp& x) {
 	return result;
 }
 
-void Evaluation(const Point& Pm, const Point& Qm,
-	Fp& Xout, Fp& Zout)
-{
-	Point temp;
-
-	Fp::mul(temp.X, Qm.X, Qm.X);
-	Fp::mul(temp.Z, Qm.Z, Qm.Z);
-	Fp::mul(Xout, Pm.X, temp.X);
-	Fp::mul(Zout, Pm.Z, temp.Z);
-}
-
-Point mont2ed(const Point& P)
-{
-	// compute twisted Edwards curve coefficients
-	/* A = 2*(1+d)/(1-d) */
-	Point t0, ed;
-	Fp::add(t0.Z, P.Z, P.Z);
-	Fp::add(ed.X, P.X, t0.Z);
-	Fp::sub(ed.Z, P.X, t0.Z);
-	return ed;
-}
-
-//Isogeny
+//Calc Isogeny
 void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k,
 	Point* Aout, Point* Pout) {
 
 	Fp tmp0, tmp1, tmp2, Psum, Pdif;
-	Point ed, prod;
+	Point ed, prod, edt1;
 	Point Am, Pm, Qm, Km, Ap24_C24m, temp1;
 	Point Aoutm, Poutm;
 
@@ -201,16 +176,23 @@ void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k
 		Fp::sub(tmp2, tmp0, tmp1);
 		Fp::mul(Qm.Z, Qm.Z, tmp2);
 	}
-	Evaluation(Pm, Qm, Pout->X, Pout->Z);	//in->montgomery, out->montgomery
+	//Evaluation
+	Fp::mul(Qm.X, Qm.X, Qm.X);
+	Fp::mul(Qm.Z, Qm.Z, Qm.Z);
+	Fp::mul(Pout->X, Pm.X, Qm.X);
+	Fp::mul(Pout->Z, Pm.Z, Qm.Z);
 
 	//A faster way to the CSIDH p10くらい
-	ed = mont2ed(Am);	//確認済み
+	/* A = 2*(1+d)/(1-d) */
+	Fp::add(edt1.Z, Am.Z, Am.Z);
+	Fp::add(ed.X, Am.X, edt1.Z);
+	Fp::sub(ed.Z, Am.X, edt1.Z);
 
 	Fp::pow(ed.X, ed.X, k);
 	Fp::pow(ed.Z, ed.Z, k);
 
 	// compute prod.x^8, prod.z^8
-	Fp::sqr(prod.X, prod.X);
+ 	Fp::sqr(prod.X, prod.X);
 	Fp::sqr(prod.X, prod.X);
 	Fp::sqr(prod.X, prod.X);
 	Fp::sqr(prod.Z, prod.Z);
