@@ -52,6 +52,7 @@ struct Fp {
     static void MR(Fp& z, const FpDbl& x)
     {
         uint64_t temp[N * 2]{}; //初期化しろ！
+        uint64_t* tempH = temp + N;
         uint64_t temp512[N]{};
 
         mpn_mul_n(temp, x.buf, p.nr.buf, N);
@@ -61,15 +62,11 @@ struct Fp {
         mpn_mul_n(temp, temp512, p.p.buf, N);
         mpn_add_n(temp, temp, x.buf, N * 2);
 
-        for (int i = 0; i < 8; i++) {
-            temp512[i] = temp[i+8];
-        }
-
-        if (mpn_cmp(temp512, p.p.buf, N) >= 0)
-            mpn_sub_n(z.buf, temp512, p.p.buf, N);
+        if (mpn_cmp(tempH, p.p.buf, N) >= 0)
+            mpn_sub_n(z.buf, tempH, p.p.buf, N);
         else {
             for (int i = 0; i < N; i++) {
-                z.buf[i] = temp512[i];
+                z.buf[i] = tempH[i];
             }
         }
     }
