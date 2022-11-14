@@ -113,10 +113,8 @@ struct Fp {
 
     static void pow(Fp& z, const Fp& x, const mpz_class& y)
     {
-        Fp result;
-
-        MR512(result, p.R2);
-
+        Fp result=Fp::mrR2;
+        
         for (int i = nbit-1; i >= 0; i--) {
             sqr(result, result);
             if (mpz_tstbit(y.get_mpz_t(), i) == 1) mul(result, result, x);
