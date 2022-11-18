@@ -49,9 +49,9 @@ struct Fp {
     //MR    In:1024bit, Out:512bit
     static void MR(Fp& z, const FpDbl& x)
     {
-        uint64_t temp[N * 2]{}; //初期化しろ！
+        uint64_t temp[N * 2];
         uint64_t* tempH = temp + N;
-        uint64_t temp512[N]{};
+        uint64_t temp512[N];
 
         mcl::bint::mulLowT<N>(temp512, x.buf, p.nr.buf);
         mcl::bint::mulT<N>(temp, temp512, p.p.buf);
@@ -69,7 +69,7 @@ struct Fp {
     //MR    In:512bit, Out:512bit
     static void MR512(Fp& z, const Fp& x)
     {
-        FpDbl temp; //初期化しろ！
+        FpDbl temp;
 
         for (int i = 0; i < 8; i++) {
             temp.buf[i] = x.buf[i];
@@ -81,9 +81,8 @@ struct Fp {
     //掛け算 Mod p(1回で完結)
     static void mul_test(Fp& z, const Fp& x, const Fp& y)
     {
-        mpz_class test;
-        Fp temp512{};
-        FpDbl temp{};
+        Fp temp512;
+        FpDbl temp;
         mcl::bint::mulT<N>(temp.buf, x.buf, y.buf);
         MR(temp512,temp);
         mcl::bint::mulT<N>(temp.buf, temp512.buf, p.R2.buf);
@@ -100,7 +99,6 @@ struct Fp {
 
     static void sqr(Fp& z, const Fp& x)
     {
-        Fp temp512;
         FpDbl temp;
         mcl::bint::sqrT<N>(temp.buf, x.buf);
         MR(z, temp);
@@ -127,7 +125,6 @@ struct Fp {
 
     static void div(Fp& z, const Fp& x, const Fp& y)
     {
-        FpDbl temp1024;
         Fp temp,xmon,ymon,invy;
 
         mul(xmon, x, p.R2);
