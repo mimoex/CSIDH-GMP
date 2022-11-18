@@ -18,10 +18,7 @@ void genCSIDHkey(seckey* K)
 //Algorithm 1: Verifying supersingularity.
 //CSIDH論文 p15
 bool validate(const mpz_class& a) {
-    mpz_class k, d=1, mod;
-
-    Fp one;
-    one.buf[0] = 1;
+    mpz_class k, d=1;
 
     Fp x;
     Fp::random_fp(x);
@@ -29,11 +26,10 @@ bool validate(const mpz_class& a) {
     Point P, Q, temp_point, A_1;
 
     mpz_export(&A_1.X.buf, NULL, -1, 8, 0, 0, a.get_mpz_t());
-    //A_1.X = a;
-    A_1.Z = one;
+    A_1.Z = Fp::fpone;
 
     P.X = x;
-    P.Z = one;
+    P.Z = Fp::fpone;
 
     bool isSupersingular = false;
     for (int i = 0; i < l; i++) {
@@ -70,12 +66,7 @@ bool isZero(const int* e, int n)
 
 
 mpz_class action(const mpz_class& A, const seckey& Key) {
-    mpz_class mod, k, p_mul, q_mul, rhs_mpz, APointX_result;
-
-    mpz_import(mod.get_mpz_t(), Fp::N, -1, 8, 0, 0, Fp::p.buf);
-
-    Fp one;
-    one.buf[0] = 1;
+    mpz_class k, p_mul, q_mul, rhs_mpz, APointX_result;
 
     Fp x, rhs;
     Point P, Q, R, temp1_point, temp2_point, A_point;
@@ -83,9 +74,9 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
     int S[l], s;
     mpz_export(&A_point.X.buf, NULL, -1, 8, 0, 0, A.get_mpz_t());
     //A_point.X = A;
-    A_point.Z = one;
+    A_point.Z = Fp::fpone;
 
-    int e[l]{};
+    int e[l];
     for (int i = 0; i < l; i++) {
         e[i] = Key.e[i];
     }
@@ -99,7 +90,7 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
         rhs = calc_twist(A_point.X, x);
         mpz_import(rhs_mpz.get_mpz_t(), Fp::N, -1, 8, 0, 0, rhs.buf);
 
-        s = mpz_kronecker(rhs_mpz.get_mpz_t(), mod.get_mpz_t());
+        s = mpz_kronecker(rhs_mpz.get_mpz_t(), Fp::modmpz.get_mpz_t());
 
         if (s == 0)
             continue;
@@ -116,11 +107,11 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
             continue;
 
 
-        p_mul = mod + 1;
+        p_mul = Fp::modmpz + 1;
         p_mul /= k;
 
         P.X = x;
-        P.Z = one;
+        P.Z = Fp::fpone;
 
         Q = xMUL(P, A_point, p_mul);
 
@@ -130,7 +121,11 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
 
             q_mul = k / primes[i];
 
+
+
             R = xMUL(Q, A_point, q_mul);
+
+
 
             if(mpn_zero_p(R.Z.buf, Fp::N))
                 continue;
@@ -138,7 +133,7 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
             IsogenyCalc(A_point, Q, R, primes[i], &temp1_point, &temp2_point);
 
             Fp::div(A_point.X, temp1_point.X, temp1_point.Z);
-            A_point.Z = one;
+            A_point.Z = Fp::fpone;
 
             Q = temp2_point;
 

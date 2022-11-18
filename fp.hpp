@@ -28,6 +28,8 @@ struct Fp {
     static Fp MR2;  //2* para.R2
     static Fp MR4;  //4* para.R2
     static mpz_class modmpz;
+    static Fp fpone; //fptwo.buf[0]=1;
+    static Fp fptwo; //fptwo.buf[0]=2;
 
 
     //足し算 Mod p OK
