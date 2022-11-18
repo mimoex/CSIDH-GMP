@@ -2,8 +2,7 @@
 
 // https://www.hyperelliptic.org/EFD/g1p/auto-montgom-xz.html#diffadd-dadd-1987-m-3
 Point Montgomery_ADDmon(const Point& Pm, const Point& Qm, const Point& Rm) {
-	Fp A, B, C, D, DA, CB, temp1, temp2, temp3, temp4;
-	Fp::FpDbl multemp;
+	Fp A, B, C, D, DA, CB, temp;
 	Point resultm;
 
 	Fp::add(A, Qm.X, Qm.Z);
@@ -12,12 +11,12 @@ Point Montgomery_ADDmon(const Point& Pm, const Point& Qm, const Point& Rm) {
 	Fp::sub(D, Pm.X, Pm.Z);
 	Fp::mul(DA, D, A);
 	Fp::mul(CB, B, C);
-	Fp::add(temp1, DA, CB);
-	Fp::sqr(temp2, temp1);
-	Fp::mul(resultm.X, Rm.Z, temp2);
-	Fp::sub(temp3, DA, CB);
-	Fp::sqr(temp4, temp3);
-	Fp::mul(resultm.Z, Rm.X, temp4);
+	Fp::add(temp, DA, CB);
+	Fp::sqr(temp, temp);
+	Fp::mul(resultm.X, Rm.Z, temp);
+	Fp::sub(temp, DA, CB);
+	Fp::sqr(temp, temp);
+	Fp::mul(resultm.Z, Rm.X, temp);
 	return resultm;
 }
 
@@ -25,7 +24,6 @@ Point Montgomery_ADDmon(const Point& Pm, const Point& Qm, const Point& Rm) {
 Point xDBLmon(const Point& Pm, const Point& Ap24m)
 {
 	Fp t0, t1, t2, t3;
-	Fp::FpDbl temp1, temp2, temp3, temp4, temp5, temp6;
 	Point resultm;
 
 	Fp::sub(t0, Pm.X, Pm.Z);
@@ -41,6 +39,8 @@ Point xDBLmon(const Point& Pm, const Point& Ap24m)
 	return resultm;
 }
 
+//Montgomery ladder
+// https://www.hyperelliptic.org/EFD/g1p/auto-montgom-xz.html#ladder-ladd-1987-m-3
 void xDBLADDmon(const Point& Pm, const Point& Qm, const Point& Rm, const Point& Ap24m,
 	Point& DBLout, Point& ADDout) {
 	Fp t0, t1, t2;
@@ -71,10 +71,8 @@ void xDBLADDmon(const Point& Pm, const Point& Qm, const Point& Rm, const Point& 
 
 //モンゴメリ曲線のスカラー倍
 Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
-	Point x0, Ap24_1, Ap24_0;
-	Point x0m, x1m, Pm, Ap24_1m;
-	Fp::FpDbl multemp;
-	Fp two;
+	Point x0, Ap24;
+	Point x0m, x1m, Pm, Ap24m;
 
 	Fp::mul(Pm.X, P.X, Fp::p.R2);
 	Fp::mul(Pm.Z, P.Z, Fp::p.R2);
@@ -84,24 +82,23 @@ Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 	x0m.Z = Pm.Z;
 
 	//a24の計算
-	Ap24_0.Z.buf[0] = 1;
-	two.buf[0] = 2;
-	Fp::add(Ap24_0.X, A_1.X, two);
+	Ap24.Z.buf[0] = 1;
+	Fp::add(Ap24.X, A_1.X, Fp::fptwo);
 
-	Fp::mul_test(Ap24_1.X, Ap24_0.X, Fp::p.inv4);
-	Ap24_1.Z.buf[0] = 1;
+	Fp::mul_test(Ap24.X, Ap24.X, Fp::p.inv4);
+	Ap24.Z.buf[0] = 1;
 
-	Fp::mul(Ap24_1m.X, Ap24_1.X, Fp::p.R2);
-	Fp::mul(Ap24_1m.Z, Ap24_1.Z, Fp::p.R2);
+	Fp::mul(Ap24m.X, Ap24.X, Fp::p.R2);
+	Fp::mul(Ap24m.Z, Ap24.Z, Fp::p.R2);
 
-	x1m = xDBLmon(Pm, Ap24_1m);
+	x1m = xDBLmon(Pm, Ap24m);
 
 	size_t bit_size;
 	bit_size = mpz_sizeinbase(n.get_mpz_t(), 2);
 
 	for (int i = bit_size - 2; i >= 0; i--) {
-		if (mpz_tstbit(n.get_mpz_t(), i) == 0) xDBLADDmon(x0m, x1m, Pm, Ap24_1m, x0m, x1m);
-		else xDBLADDmon(x1m, x0m, Pm, Ap24_1m, x1m, x0m);
+		if (mpz_tstbit(n.get_mpz_t(), i) == 0) xDBLADDmon(x0m, x1m, Pm, Ap24m, x0m, x1m);
+		else xDBLADDmon(x1m, x0m, Pm, Ap24m, x1m, x0m);
 	}
 
 	Fp::MR512(x0.X, x0m.X);
@@ -113,8 +110,6 @@ Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 Fp calc_twist(const Fp& a, const Fp& x) {
 	Fp result, temp1, temp2, temp3, temp4;
 	Fp a_mont, x_mont;
-
-	mpz_class t1, t2, t3, t4, t5, t6;
 
 	Fp::mul(a_mont, a, Fp::p.R2);
 	Fp::mul(x_mont, x, Fp::p.R2);
