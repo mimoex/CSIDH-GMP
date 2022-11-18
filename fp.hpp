@@ -41,11 +41,8 @@ struct Fp {
     //引き算 Mod p OK
     static void sub(Fp& z, const Fp& x, const Fp& y)
     {
-        if (mpn_cmp(x.buf, y.buf, N) >= 0) {
-            mcl::bint::subT<N>(z.buf, x.buf, y.buf);
-        } else {
-            mcl::bint::addT<N>(z.buf, x.buf, p.buf);
-            mcl::bint::subT<N>(z.buf, z.buf, y.buf);
+        if (mcl::bint::subT<N>(z.buf, x.buf, y.buf)) {
+            mcl::bint::addT<N>(z.buf, z.buf, p.buf);
         }
     }
 
