@@ -4,8 +4,8 @@ DEP=$(SRC:.cpp=.d)
 
 
 TARGET=csidh
-CFLAGS+=-O3 -Wall -Wextra -DNDEUBG -g
-LDFLAGS=-lgmp -lgmpxx
+CFLAGS+=-O3 -Wall -Wextra -DNDEUBG -g -I ./mcl/include
+LDFLAGS=-lgmp -lgmpxx -L ./mcl/lib -lmcl
 
 all: $(TARGET)
 

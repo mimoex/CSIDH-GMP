@@ -4,6 +4,7 @@
 #include <gmpxx.h>
 #include <chrono>
 #include <random>
+#include "mcl/bint.hpp"
 
 struct Fp {
     int v;
@@ -32,36 +33,35 @@ struct Fp {
     //足し算 Mod p OK
     static void add(Fp& z, const Fp& x, const Fp& y)
     {
-        mpn_add_n(z.buf, x.buf, y.buf, N);
+        mcl::bint::addT<N>(z.buf, x.buf, y.buf);
         if (mpn_cmp(z.buf, p.buf, N) >= 0)
-            mpn_sub_n(z.buf, z.buf, p.buf, N);
+            mcl::bint::subT<N>(z.buf, z.buf, p.buf);
     }
 
     //引き算 Mod p OK
     static void sub(Fp& z, const Fp& x, const Fp& y)
     {
         if (mpn_cmp(x.buf, y.buf, N) >= 0) {
-            mpn_sub_n(z.buf, x.buf, y.buf, N);
+            mcl::bint::subT<N>(z.buf, x.buf, y.buf);
         } else {
-            mpn_add_n(z.buf, x.buf, p.buf, N);
-            mpn_sub_n(z.buf, z.buf, y.buf, N);
+            mcl::bint::addT<N>(z.buf, x.buf, p.buf);
+            mcl::bint::subT<N>(z.buf, z.buf, y.buf);
         }
     }
 
     //MR    In:1024bit, Out:512bit
     static void MR(Fp& z, const FpDbl& x)
     {
-        uint64_t temp1[N * 2]{}; //初期化しろ！
-        uint64_t temp2[N * 2]{};
-        uint64_t* tempH = temp2 + N;
+        uint64_t temp[N * 2]{}; //初期化しろ！
+        uint64_t* tempH = temp + N;
         uint64_t temp512[N]{};
 
-        mpn_mul_n(temp1, x.buf, p.nr.buf, N);
-        mpn_mul_n(temp2, temp1, p.p.buf, N);
-        mpn_add_n(temp2, temp2, x.buf, N * 2);
+        mcl::bint::mulLowT<N>(temp512, x.buf, p.nr.buf);
+        mcl::bint::mulT<N>(temp, temp512, p.p.buf);
+        mcl::bint::addT<N*2>(temp, temp, x.buf);
 
         if (mpn_cmp(tempH, p.p.buf, N) >= 0)
-            mpn_sub_n(z.buf, tempH, p.p.buf, N);
+            mcl::bint::subT<N>(z.buf, tempH, p.p.buf);
         else {
             for (int i = 0; i < N; i++) {
                 z.buf[i] = tempH[i];
@@ -87,9 +87,9 @@ struct Fp {
         mpz_class test;
         Fp temp512{};
         FpDbl temp{};
-        mpn_mul_n(temp.buf, x.buf, y.buf,N);
+        mcl::bint::mulT<N>(temp.buf, x.buf, y.buf);
         MR(temp512,temp);
-        mpn_mul_n(temp.buf, temp512.buf, p.R2.buf, N);
+        mcl::bint::mulT<N>(temp.buf, temp512.buf, p.R2.buf);
         MR(z, temp);
     }
 
@@ -97,7 +97,7 @@ struct Fp {
     static void mul(Fp& z, const Fp& x, const Fp& y)
     {
         FpDbl temp;
-        mpn_mul_n(temp.buf, x.buf, y.buf, N);
+        mcl::bint::mulT<N>(temp.buf, x.buf, y.buf);
         MR(z, temp);
     }
 
@@ -105,7 +105,7 @@ struct Fp {
     {
         Fp temp512;
         FpDbl temp;
-        mpn_sqr(temp.buf, x.buf, N);
+        mcl::bint::sqrT<N>(temp.buf, x.buf);
         MR(z, temp);
     }
 
