@@ -51,16 +51,14 @@ struct Fp {
     //MR    In:1024bit, Out:512bit
     static void MR(Fp& z, const FpDbl& x)
     {
-        uint64_t temp[N * 2]{}; //初期化しろ！
-        uint64_t* tempH = temp + N;
+        uint64_t temp1[N * 2]{}; //初期化しろ！
+        uint64_t temp2[N * 2]{};
+        uint64_t* tempH = temp2 + N;
         uint64_t temp512[N]{};
 
-        mpn_mul_n(temp, x.buf, p.nr.buf, N);
-        for (int i = 0; i < 8; i++) { //上位512bitのみ書き込み
-            temp512[i] = temp[i];
-        }
-        mpn_mul_n(temp, temp512, p.p.buf, N);
-        mpn_add_n(temp, temp, x.buf, N * 2);
+        mpn_mul_n(temp1, x.buf, p.nr.buf, N);
+        mpn_mul_n(temp2, temp1, p.p.buf, N);
+        mpn_add_n(temp2, temp2, x.buf, N * 2);
 
         if (mpn_cmp(tempH, p.p.buf, N) >= 0)
             mpn_sub_n(z.buf, tempH, p.p.buf, N);
