@@ -1,4 +1,4 @@
-SRC=main.cpp fp.cpp CSIDH.cpp Montgomery.cpp
+SRC=main.cpp CSIDH.cpp Montgomery.cpp
 OBJ=$(SRC:.cpp=.o)
 DEP=$(SRC:.cpp=.d)
 

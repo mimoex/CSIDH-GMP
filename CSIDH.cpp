@@ -1,52 +1,58 @@
-#include "fp.h"
+#include "CSIDH.hpp"
 
-int sign(const int& x) { return (x > 0) - (x < 0); }
+int sign(int x) {
+    if (x > 0) return 1;
+    if (x == 0) return 0;
+    return -1;
+}
 
 void genCSIDHkey(seckey* K)
 {
-    random_device rd;
-    default_random_engine eng(rd());
-    uniform_int_distribution<int> distr(-5, 5);  //-5から5までの乱数を生成
+    std::random_device rd;
+    std::default_random_engine eng(rd());
+    std::uniform_int_distribution<int> distr(-5, 5);  //-5から5までの乱数を生成
 
-    for (int i = 0; i < N; i++) K->e[i] = distr(eng);
+    for (int i = 0; i < l; i++) K->e[i] = distr(eng);
 }
 
 //Algorithm 1: Verifying supersingularity.
 //CSIDH論文 p15
 bool validate(const mpz_class& a) {
+    mpz_class k, d=1, mod;
 
-    mpz_class k, d = 1;
+    Fp one;
+    one.buf[0] = 1;
 
-    mpz_class x;
-    x = random_fp();
+    Fp x;
+    Fp::random_fp(x);
 
     Point P, Q, temp_point, A_1;
 
-    A_1.X = a;
-    A_1.Z = 1;
+    mpz_export(&A_1.X.buf, NULL, -1, 8, 0, 0, a.get_mpz_t());
+    //A_1.X = a;
+    A_1.Z = one;
 
     P.X = x;
-    P.Z = 1;
+    P.Z = one;
 
     bool isSupersingular = false;
-    for (int i = 0; i < N; i++) {
-        k = para.mod + 1;
+    for (int i = 0; i < l; i++) {
+        k = Fp::modmpz + 1;
         k /= primes[i];
 
         Q = xMUL(P, A_1, k);
-        //Q = temp_point;
 
         k = primes[i];
         temp_point = xMUL(Q, A_1, k);
-        if (!(temp_point.Z == 0)) {
+        if (mpn_zero_p(temp_point.Z.buf, Fp::N)==0) {
             isSupersingular = false;
             break;
         }
 
-        if (!(Q.Z == 0))
+        if ((mpn_zero_p(Q.Z.buf, Fp::N)) == 0)
             d *= primes[i];
 
-        if (d > para.sqrt4) {
+        if (d > Fp::sqrt4) {
             isSupersingular = true;
             break;
         }
@@ -54,43 +60,53 @@ bool validate(const mpz_class& a) {
     return isSupersingular;
 }
 
+bool isZero(const int* e, int n)
+{
+    for (int i = 0; i < n; i++) {
+        if (e[i]) return false;
+    }
+    return true;
+}
+
 
 mpz_class action(const mpz_class& A, const seckey& Key) {
-    mpz_class x, rhs, k, p_mul, q_mul;
+    mpz_class mod, k, p_mul, q_mul, rhs_mpz, APointX_result;
 
+    mpz_import(mod.get_mpz_t(), Fp::N, -1, 8, 0, 0, Fp::p.buf);
+
+    Fp one;
+    one.buf[0] = 1;
+
+    Fp x, rhs;
     Point P, Q, R, temp1_point, temp2_point, A_point;
 
-    int S[N], s;
-    A_point.X = A;
-    A_point.Z = 1;
+    int S[l], s;
+    mpz_export(&A_point.X.buf, NULL, -1, 8, 0, 0, A.get_mpz_t());
+    //A_point.X = A;
+    A_point.Z = one;
 
-    int e[N];
-    for (int i = 0; i < N; i++) {
+    int e[l]{};
+    for (int i = 0; i < l; i++) {
         e[i] = Key.e[i];
     }
 
 
     //Evaluating the class group action.
     //A faster way to the CSIDH p4 https://eprint.iacr.org/2018/782.pdf
-    bool flag = false;
-    for (int i = 0; i < N; i++) {
-        if (e[i] != 0) {
-            flag = true;
-            break;
-        }
-    }
-    while (flag) {
-        x = random_fp();
-        rhs = calc_twist(A_point.X, x);
+    while (!isZero(e, l)) {
+        Fp::random_fp(x);
 
-        s = mpz_kronecker(rhs.get_mpz_t(), para.mod.get_mpz_t());
+        rhs = calc_twist(A_point.X, x);
+        mpz_import(rhs_mpz.get_mpz_t(), Fp::N, -1, 8, 0, 0, rhs.buf);
+
+        s = mpz_kronecker(rhs_mpz.get_mpz_t(), mod.get_mpz_t());
 
         if (s == 0)
             continue;
 
         k = 1;
         memset(S, 0, sizeof S);
-        for (int i = 0; i < N; i++) {
+        for (int i = 0; i < l; i++) {
             if (sign(e[i]) == s) {
                 S[i] = 1;
                 k *= primes[i];
@@ -100,28 +116,29 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
             continue;
 
 
-        p_mul = para.mod + 1;
+        p_mul = mod + 1;
         p_mul /= k;
 
         P.X = x;
-        P.Z = 1;
+        P.Z = one;
+
         Q = xMUL(P, A_point, p_mul);
 
-        for (int i = 0; i < N; i++) {
+        for (int i = 0; i < l; i++) {
             if (S[i] == 0)
                 continue;
 
             q_mul = k / primes[i];
 
-            //cout << "y^2 = x^3 + " << A_point.X << "*x^2 + x" << endl;
             R = xMUL(Q, A_point, q_mul);
-            if (R.Z == 0)
+
+            if(mpn_zero_p(R.Z.buf, Fp::N))
                 continue;
 
             IsogenyCalc(A_point, Q, R, primes[i], &temp1_point, &temp2_point);
 
-            div_fp(temp1_point.X, temp1_point.Z, &A_point.X);
-            A_point.Z = 1;
+            Fp::div(A_point.X, temp1_point.X, temp1_point.Z);
+            A_point.Z = one;
 
             Q = temp2_point;
 
@@ -129,16 +146,8 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
 
         }
 
-
-
-        flag = false;
-        for (int i = 0; i < N; i++) {
-            if (e[i] != 0) {
-                flag = true;
-                break;
-            }
-        }
+        if (isZero(e, l)) break;
     }
-
-    return A_point.X;
+    mpz_import(APointX_result.get_mpz_t(), Fp::N, -1, 8, 0, 0, A_point.X.buf);
+    return APointX_result;
 }
