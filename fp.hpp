@@ -7,8 +7,8 @@
 #include "mcl/bint.hpp"
 
 struct Fp {
-    int v;
-    Fp(int _v=0) : v(_v) {}
+    //int v;
+    //Fp(int _v = 0) : v(_v) {}
     static const int N = 8; //64bit * 8 =512bit
     uint64_t buf[N]{};
 
@@ -36,7 +36,7 @@ struct Fp {
     static void add(Fp& z, const Fp& x, const Fp& y)
     {
         mcl::bint::addT<N>(z.buf, x.buf, y.buf);
-        if (mpn_cmp(z.buf, p.buf, N) >= 0)
+        if (mcl::bint::cmpGeT<N>(z.buf, p.buf))
             mcl::bint::subT<N>(z.buf, z.buf, p.buf);
     }
 
@@ -57,9 +57,9 @@ struct Fp {
 
         mcl::bint::mulLowT<N>(temp512, x.buf, p.nr.buf);
         mcl::bint::mulT<N>(temp, temp512, p.p.buf);
-        mcl::bint::addT<N*2>(temp, temp, x.buf);
+        mcl::bint::addT<N * 2>(temp, temp, x.buf);
 
-        if (mpn_cmp(tempH, p.p.buf, N) >= 0)
+        if(mcl::bint::cmpGeT<N>(tempH, p.p.buf))
             mcl::bint::subT<N>(z.buf, tempH, p.p.buf);
         else {
             for (int i = 0; i < N; i++) {
@@ -76,7 +76,6 @@ struct Fp {
         for (int i = 0; i < 8; i++) {
             temp.buf[i] = x.buf[i];
         }
-
         MR(z, temp);
     }
 
@@ -86,7 +85,7 @@ struct Fp {
         Fp temp512;
         FpDbl temp;
         mcl::bint::mulT<N>(temp.buf, x.buf, y.buf);
-        MR(temp512,temp);
+        MR(temp512, temp);
         mcl::bint::mulT<N>(temp.buf, temp512.buf, p.R2.buf);
         MR(z, temp);
     }
@@ -108,9 +107,9 @@ struct Fp {
 
     static void pow(Fp& z, const Fp& x, const mpz_class& y)
     {
-        Fp result=Fp::mrR2;
-        
-        for (int i = nbit-1; i >= 0; i--) {
+        Fp result = Fp::mrR2;
+
+        for (int i = nbit - 1; i >= 0; i--) {
             sqr(result, result);
             if (mpz_tstbit(y.get_mpz_t(), i) == 1) mul(result, result, x);
         }
@@ -119,15 +118,15 @@ struct Fp {
 
     static void inv(Fp& z, const Fp& y)
     {
-        if (mpn_zero_p(y.buf, N))
+        if (mcl::bint::isZeroN(y.buf, N))
             throw std::range_error("Divided by zero.");
         else
-            pow(z, y, modmpz-2);
+            pow(z, y, modmpz - 2);
     }
 
     static void div(Fp& z, const Fp& x, const Fp& y)
     {
-        Fp temp,xmon,ymon,invy;
+        Fp temp, xmon, ymon, invy;
 
         mul(xmon, x, p.R2);
         mul(ymon, y, p.R2);

@@ -187,7 +187,7 @@ void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k
 	Fp::pow(ed.Z, ed.Z, k);
 
 	// compute prod.x^8, prod.z^8
- 	Fp::sqr(prod.X, prod.X);
+	Fp::sqr(prod.X, prod.X);
 	Fp::sqr(prod.X, prod.X);
 	Fp::sqr(prod.X, prod.X);
 	Fp::sqr(prod.Z, prod.Z);

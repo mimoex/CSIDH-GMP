@@ -18,7 +18,7 @@ void genCSIDHkey(seckey* K)
 //Algorithm 1: Verifying supersingularity.
 //CSIDH論文 p15
 bool validate(const mpz_class& a) {
-    mpz_class k, d=1;
+    mpz_class k, d = 1;
 
     Fp x;
     Fp::random_fp(x);
@@ -40,12 +40,13 @@ bool validate(const mpz_class& a) {
 
         k = primes[i];
         temp_point = xMUL(Q, A_1, k);
-        if (mpn_zero_p(temp_point.Z.buf, Fp::N)==0) {
+        //if (mpn_zero_p(temp_point.Z.buf, Fp::N) == 0) {
+        if (! mcl::bint::isZeroN(temp_point.Z.buf, Fp::N)) {
             isSupersingular = false;
             break;
         }
 
-        if ((mpn_zero_p(Q.Z.buf, Fp::N)) == 0)
+        if (!mcl::bint::isZeroN(Q.Z.buf, Fp::N))
             d *= primes[i];
 
         if (d > Fp::sqrt4) {
@@ -69,9 +70,9 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
     mpz_class k, p_mul, q_mul, rhs_mpz, APointX_result;
 
     Fp x, rhs;
-    Point P, Q, R, temp1_point, temp2_point, A_point;
+    Point P, Q, R, iso_A, iso_P, A_point;
 
-    int S[l], s;
+    int s;
     mpz_export(&A_point.X.buf, NULL, -1, 8, 0, 0, A.get_mpz_t());
     //A_point.X = A;
     A_point.Z = Fp::fpone;
@@ -80,7 +81,6 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
     for (int i = 0; i < l; i++) {
         e[i] = Key.e[i];
     }
-
 
     //Evaluating the class group action.
     //A faster way to the CSIDH p4 https://eprint.iacr.org/2018/782.pdf
@@ -96,7 +96,7 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
             continue;
 
         k = 1;
-        memset(S, 0, sizeof S);
+        int S[l]={};
         for (int i = 0; i < l; i++) {
             if (sign(e[i]) == s) {
                 S[i] = 1;
@@ -127,15 +127,15 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
 
 
 
-            if(mpn_zero_p(R.Z.buf, Fp::N))
+            if (mcl::bint::isZeroN(R.Z.buf, Fp::N))
                 continue;
 
-            IsogenyCalc(A_point, Q, R, primes[i], &temp1_point, &temp2_point);
+            IsogenyCalc(A_point, Q, R, primes[i], &iso_A, &iso_P);
 
-            Fp::div(A_point.X, temp1_point.X, temp1_point.Z);
+            Fp::div(A_point.X, iso_A.X, iso_A.Z);
             A_point.Z = Fp::fpone;
 
-            Q = temp2_point;
+            Q = iso_P;
 
             e[i] -= s;
 
