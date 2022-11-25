@@ -172,8 +172,8 @@ void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k
 		Fp::mul(Qm.Z, Qm.Z, tmp2);
 	}
 	//Evaluation
-	Fp::mul(Qm.X, Qm.X, Qm.X);
-	Fp::mul(Qm.Z, Qm.Z, Qm.Z);
+	Fp::sqr(Qm.X, Qm.X);
+	Fp::sqr(Qm.Z, Qm.Z);
 	Fp::mul(Pout->X, Pm.X, Qm.X);
 	Fp::mul(Pout->Z, Pm.Z, Qm.Z);
 
