@@ -6,6 +6,8 @@
 #include <random>
 #include "mcl/bint.hpp"
 
+void const_set();
+
 struct Fp {
     //int v;
     //Fp(int _v = 0) : v(_v) {}
