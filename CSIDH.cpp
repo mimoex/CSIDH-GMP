@@ -19,17 +19,13 @@ void genCSIDHkey(seckey* K)
 //CSIDH論文 p15
 bool validate(const mpz_class& a) {
     mpz_class k, d = 1;
-
-    Fp x;
-    Fp::random_fp(x);
-
     Point P, Q, temp_point, A_1;
 
-    mpz_export(&A_1.X.buf, NULL, -1, 8, 0, 0, a.get_mpz_t());
-    A_1.Z = Fp::fpone;
-
-    P.X = x;
+    Fp::random_fp(P.X);
     P.Z = Fp::fpone;
+
+    Fp::set_mpz(A_1.X, a);
+    A_1.Z = Fp::fpone;
 
     bool isSupersingular = false;
     for (int i = 0; i < l; i++) {
@@ -40,8 +36,7 @@ bool validate(const mpz_class& a) {
 
         k = primes[i];
         temp_point = xMUL(Q, A_1, k);
-        //if (mpn_zero_p(temp_point.Z.buf, Fp::N) == 0) {
-        if (! mcl::bint::isZeroN(temp_point.Z.buf, Fp::N)) {
+        if (!mcl::bint::isZeroN(temp_point.Z.buf, Fp::N)) {
             isSupersingular = false;
             break;
         }
@@ -69,11 +64,11 @@ bool isZero(const int* e, int n)
 mpz_class action(const mpz_class& A, const seckey& Key) {
     mpz_class k, p_mul, q_mul, rhs_mpz, APointX_result;
 
-    Fp x, rhs;
+    Fp rhs;
     Point P, Q, R, iso_A, iso_P, A_point;
 
     int s;
-    mpz_export(&A_point.X.buf, NULL, -1, 8, 0, 0, A.get_mpz_t());
+    Fp::set_mpz(A_point.X, A);
     //A_point.X = A;
     A_point.Z = Fp::fpone;
 
@@ -85,18 +80,20 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
     //Evaluating the class group action.
     //A faster way to the CSIDH p4 https://eprint.iacr.org/2018/782.pdf
     while (!isZero(e, l)) {
-        Fp::random_fp(x);
+        Fp::random_fp(P.X);
 
-        rhs = calc_twist(A_point.X, x);
-        mpz_import(rhs_mpz.get_mpz_t(), Fp::N, -1, 8, 0, 0, rhs.buf);
+        rhs = calc_twist(A_point.X, P.X);
+        Fp::get_mpz(rhs_mpz, rhs);
 
         s = mpz_kronecker(rhs_mpz.get_mpz_t(), Fp::modmpz.get_mpz_t());
 
         if (s == 0)
             continue;
 
+        P.Z = Fp::fpone;
+
         k = 1;
-        int S[l]={};
+        int S[l] = {};
         for (int i = 0; i < l; i++) {
             if (sign(e[i]) == s) {
                 S[i] = 1;
@@ -109,9 +106,6 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
 
         p_mul = Fp::modmpz + 1;
         p_mul /= k;
-
-        P.X = x;
-        P.Z = Fp::fpone;
 
         Q = xMUL(P, A_point, p_mul);
 
@@ -143,6 +137,6 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
 
         if (isZero(e, l)) break;
     }
-    mpz_import(APointX_result.get_mpz_t(), Fp::N, -1, 8, 0, 0, A_point.X.buf);
+    Fp::get_mpz(APointX_result, A_point.X);
     return APointX_result;
 }

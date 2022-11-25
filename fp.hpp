@@ -33,6 +33,16 @@ struct Fp {
     static Fp fpone; //fptwo.buf[0]=1;
     static Fp fptwo; //fptwo.buf[0]=2;
 
+    static void set_mpz(Fp& z, const mpz_class& x)
+    {
+        mpz_export(&z, NULL, -1, 8, 0, 0, x.get_mpz_t());
+    }
+
+    static void get_mpz(mpz_class& z, const Fp& x)
+    {
+        mpz_import(z.get_mpz_t(), Fp::N, -1, 8, 0, 0, x.buf);
+    }
+
 
     //足し算 Mod p OK
     static void add(Fp& z, const Fp& x, const Fp& y)
