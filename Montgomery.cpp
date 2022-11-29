@@ -78,7 +78,7 @@ Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
 	Fp::mul(Pm.Z, P.Z, Fp::p.R2);
 
 	//x0 = P;
-	x0m.X = Pm;
+	x0m = Pm;
 
 	//a24の計算	a24=(a+2)/4
 	Fp::add(Ap24.X, A_1.X, Fp::fptwo);
