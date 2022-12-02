@@ -82,7 +82,11 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
         Fp::random_fp(Pm.X);
 
         rhs = calc_twist(A_point.X, Pm.X);
-        s = Fp::isSquare(rhs);
+        //s = Fp::isSquare(rhs);    //これでも動く
+        Fp::get_mpz(rhs_mpz, rhs);
+        s = mpz_kronecker(rhs_mpz.get_mpz_t(), Fp::modmpz.get_mpz_t());     //こっちのほうが速い
+        if (s == 0)
+            continue;
 
         Pm.Z = Fp::mrR2;
 
