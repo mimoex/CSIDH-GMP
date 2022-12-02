@@ -128,15 +128,63 @@ struct Fp {
         z = result;
     }
 
-    static void inv(Fp& z, const Fp& y)
+    //x^-1 = x^(p-2)
+    static void inv(Fp& z, const Fp& x)
     {
-        if (mcl::bint::isZeroN(y.buf, N))
+        if (mcl::bint::isZeroT<N>(x.buf))
             throw std::range_error("Divided by zero.");
         else
-            pow(z, y, modmpz - 2);
+            pow(z, x, modmpz - 2);
     }
 
-    static void div(Fp& z, const Fp& x, const Fp& y)
+    static int binary_inv(Fp& z, const Fp& y)
+    {
+        Fp u, v, r, s;
+        u = p; v = y; s = fpone;
+
+        if (mcl::bint::isZeroT<N>(y.buf)) {
+            throw std::range_error("Divided by zero.");
+            return -1;
+        } else {
+            while (!(mcl::bint::cmpEqT<N>(u.buf, fpone.buf)) && !(mcl::bint::cmpEqT<N>(v.buf, fpone.buf))) {
+
+                while ((u.buf[0] & 1) == 0) {
+                    mcl::bint::shrT<N>(u.buf, u.buf, 1);        //u >>= 1;
+                    if ((r.buf[0] & 1) == 1) {
+                        mcl::bint::addT<N>(r.buf, r.buf, p.buf);    //r += p;
+                    }
+                    mcl::bint::shrT<N>(r.buf, r.buf, 1);        //r >>= 1;
+                }
+                while ((v.buf[0] & 1) == 0) {
+                    mcl::bint::shrT<N>(v.buf, v.buf, 1);        //v >>= 1;
+                    if ((s.buf[0] & 1) == 1) {
+                        mcl::bint::addT<N>(s.buf, s.buf, p.buf);    //s += p;
+                    }
+                    mcl::bint::shrT<N>(s.buf, s.buf, 1);        //s >>= 1;
+                }
+                if (mcl::bint::cmpGeT<N>(u.buf, v.buf)) {       //if (u >= v)
+                    mcl::bint::subT<N>(u.buf, u.buf, v.buf);    //u -= v;
+                    if (mcl::bint::subT<N>(r.buf, r.buf, s.buf))//r -= s;
+                        mcl::bint::addT<N>(r.buf, r.buf, p.buf);
+                }
+                else {
+                    mcl::bint::subT<N>(v.buf, v.buf, u.buf);    //v -= u;
+                    if (mcl::bint::subT<N>(s.buf, s.buf, r.buf))    //s -= r;
+                        mcl::bint::addT<N>(s.buf, s.buf, p.buf);
+                }
+
+            }
+            if (mcl::bint::cmpEqT<N>(u.buf, fpone.buf)) {
+                sub(z, r, p);
+            }
+            else {
+                sub(z, s, p);
+            }
+        }
+        return 0;
+    }
+
+    static void div_minus2(Fp& z, const Fp& x, const Fp& y)
     {
         Fp temp, xmon, ymon, invy;
 
@@ -144,6 +192,19 @@ struct Fp {
         mul(ymon, y, p.R2);
         inv(invy, ymon);
         mul(temp, xmon, invy);
+
+        MR512(z, temp);
+    }
+
+    static void div(Fp& z, const Fp& x, const Fp& y)
+    {
+        Fp temp, xmon, ymon, yinv;
+
+        mul(xmon, x, p.R2);
+        binary_inv(yinv, y);
+        mul(ymon, yinv, p.R2);  //yinv*R
+
+        mul(temp, xmon, ymon);  // x * y^-1
 
         MR512(z, temp);
     }
