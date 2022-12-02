@@ -19,10 +19,10 @@ void genCSIDHkey(seckey* K)
 //CSIDH論文 p15
 bool validate(const mpz_class& a) {
     mpz_class k, d = 1;
-    Point P, Q, temp_point, A_1;
+    Point Pm, Qm, temp_pointm, A_1;
 
-    Fp::random_fp(P.X);
-    P.Z = Fp::fpone;
+    Fp::random_fp(Pm.X);
+    Pm.Z = Fp::mrR2;
 
     Fp::set_mpz(A_1.X, a);
     A_1.Z = Fp::fpone;
@@ -32,16 +32,16 @@ bool validate(const mpz_class& a) {
         k = Fp::modmpz + 1;
         k /= primes[i];
 
-        Q = xMUL(P, A_1, k);
+        Qm = xMULmon(Pm, A_1, k);
 
         k = primes[i];
-        temp_point = xMUL(Q, A_1, k);
-        if (!mcl::bint::isZeroN(temp_point.Z.buf, Fp::N)) {
+        temp_pointm = xMUL(Qm, A_1, k);
+        if (!mcl::bint::isZeroN(temp_pointm.Z.buf, Fp::N)) {
             isSupersingular = false;
             break;
         }
 
-        if (!mcl::bint::isZeroN(Q.Z.buf, Fp::N))
+        if (!mcl::bint::isZeroN(Qm.Z.buf, Fp::N))
             d *= primes[i];
 
         if (d > Fp::sqrt4) {
@@ -65,11 +65,10 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
     mpz_class k, p_mul, q_mul, rhs_mpz, APointX_result;
 
     Fp rhs;
-    Point P, Q, R, iso_A, iso_P, A_point;
-
+    Point Pm, Qm, Rm, iso_A, iso_P, A_point;
     int s;
+
     Fp::set_mpz(A_point.X, A);
-    //A_point.X = A;
     A_point.Z = Fp::fpone;
 
     int e[l];
@@ -80,13 +79,12 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
     //Evaluating the class group action.
     //A faster way to the CSIDH p4 https://eprint.iacr.org/2018/782.pdf
     while (!isZero(e, l)) {
-        Fp::random_fp(P.X);
+        Fp::random_fp(Pm.X);
 
-        rhs = calc_twist(A_point.X, P.X);
-
+        rhs = calc_twist(A_point.X, Pm.X);
         s = Fp::isSquare(rhs);
 
-        P.Z = Fp::fpone;
+        Pm.Z = Fp::mrR2;
 
         k = 1;
         int S[l] = {};
@@ -103,7 +101,7 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
         p_mul = Fp::modmpz + 1;
         p_mul /= k;
 
-        Q = xMUL(P, A_point, p_mul);
+        Qm = xMULmon(Pm, A_point, p_mul);
 
         for (int i = 0; i < l; i++) {
             if (S[i] == 0)
@@ -113,19 +111,19 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
 
 
 
-            R = xMUL(Q, A_point, q_mul);
+            Rm = xMULmon(Qm, A_point, q_mul);
 
 
 
-            if (mcl::bint::isZeroN(R.Z.buf, Fp::N))
+            if (mcl::bint::isZeroN(Rm.Z.buf, Fp::N))
                 continue;
 
-            IsogenyCalc(A_point, Q, R, primes[i], &iso_A, &iso_P);
+            IsogenyCalc(A_point, Qm, Rm, primes[i], &iso_A, &iso_P);
 
             Fp::div(A_point.X, iso_A.X, iso_A.Z);
             A_point.Z = Fp::fpone;
 
-            Q = iso_P;
+            Qm = iso_P;
 
             e[i] -= s;
 

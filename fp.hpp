@@ -32,6 +32,7 @@ struct Fp {
     static mpz_class modmpz;
     static Fp fpone; //fptwo.buf[0]=1;
     static Fp fptwo; //fptwo.buf[0]=2;
+    static mpz_class p_plus_1_quarte;
 
     static void set_mpz(Fp& z, const mpz_class& x)
     {
@@ -214,7 +215,7 @@ struct Fp {
     static int isSquare(const Fp& x)
     {
         Fp temp,check;
-        pow(temp, x, p_minus_1_halves);     //x^((p + 1) / 4)
+        pow(temp, x, p_plus_1_quarte);     //x^((p + 1) / 4)
         pow(check, temp, 2);
         if (mcl::bint::cmpEqT<N>(x.buf, check.buf))
             return 1;

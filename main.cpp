@@ -18,6 +18,7 @@ Fp Fp::MR4;
 mpz_class Fp::modmpz;
 Fp Fp::fpone;
 Fp Fp::fptwo;
+mpz_class Fp::p_plus_1_quarte;
 
 using namespace std;
 

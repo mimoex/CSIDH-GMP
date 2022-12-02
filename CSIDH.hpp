@@ -23,3 +23,7 @@ void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k
 //CSIDH関連
 bool validate(const mpz_class& a);
 mpz_class action(const mpz_class& A, const seckey& Key);
+
+void genCSIDHkey(seckey* K);
+
+Point xMULmon(const Point& Pm, const Point& A_1, const mpz_class& n);
