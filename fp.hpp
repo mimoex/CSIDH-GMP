@@ -209,6 +209,18 @@ struct Fp {
         MR512(z, temp);
     }
 
+    // x^3+ Ax^2 + x is square => return +1
+    // else => return -1
+    static int isSquare(const Fp& x)
+    {
+        Fp temp,check;
+        pow(temp, x, p_minus_1_halves);     //x^((p + 1) / 4)
+        pow(check, temp, 2);
+        if (mcl::bint::cmpEqT<N>(x.buf, check.buf))
+            return 1;
+        return -1;
+    }
+
     //有限体pから乱数生成
     static void random_fp(Fp& z)
     {
