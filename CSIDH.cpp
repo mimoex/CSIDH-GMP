@@ -21,7 +21,7 @@ bool validate(const mpz_class& a) {
     mpz_class k, d = 1;
     Point Pm, Qm, temp_pointm, A_1;
 
-    Fp::random_fp(Pm.X);
+    Fp::RandomGen(Pm.X);
     Pm.Z = Fp::mrR2;
 
     Fp::set_mpz(A_1.X, a);
@@ -79,7 +79,7 @@ mpz_class action(const mpz_class& A, const seckey& Key) {
     //Evaluating the class group action.
     //A faster way to the CSIDH p4 https://eprint.iacr.org/2018/782.pdf
     while (!isZero(e, l)) {
-        Fp::random_fp(Pm.X);
+        Fp::RandomGen(Pm.X);
 
         rhs = calc_twist(A_point.X, Pm.X);
         //s = Fp::isSquare(rhs);    //これでも動く

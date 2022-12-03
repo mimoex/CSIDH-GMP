@@ -210,7 +210,7 @@ struct Fp {
         MR512(z, temp);
     }
 
-    // x^3+ Ax^2 + x is square => return +1
+    // x^3+ Ax^2 + x (p mod 4 ≡ 3) is square => return +1
     // else => return -1
     static int isSquare(const Fp& x)
     {
@@ -223,17 +223,13 @@ struct Fp {
     }
 
     //有限体pから乱数生成
-    static void random_fp(Fp& z)
+    static void RandomGen(Fp& z)
     {
-        Fp temp;
-
         while (1) {
-            mpn_random(temp.buf, N);
+            mpn_random(z.buf, N);
 
-            if (mpn_cmp(temp.buf, p.buf, N) < 0) {
-                z = temp;
+            if (mcl::bint::cmpGtT<N>(p.buf, z.buf))   //if(p > z)
                 break;
-            }
         }
     }
 
