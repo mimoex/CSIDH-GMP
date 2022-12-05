@@ -19,9 +19,11 @@ void const_set()
     Fp::p.fpone.buf[0] = 1;
     Fp::p.fptwo.buf[0] = 2;
     Fp::p.p_plus_1_quarte = "1331684699081905773686966904488651388517342873708180584403111660513502390006644134406723028256595313406156735410987361198165720310405343322235720072016415";
+#ifdef USE_NEW_MCL
     int ret = mcl_init(pStr);
     if (ret) {
         printf("err mcl_init %d\n", ret);
         exit(1);
     }
+#endif
 }
