@@ -6,6 +6,11 @@
 #include <random>
 #include "mcl/bint.hpp"
 
+#define USE_NEW_MCL
+#ifdef USE_NEW_MCL
+#include "mcl.h"
+#endif
+
 void const_set();
 
 struct Fp {
@@ -106,16 +111,24 @@ struct Fp {
     //掛け算 Mod p(Montgomeryで返す)
     static void mul(Fp& z, const Fp& x, const Fp& y)
     {
+#ifdef USE_NEW_MCL
+        mcl_mont(z.buf, x.buf, y.buf);
+#else
         FpDbl temp;
         mcl::bint::mulT<N>(temp.buf, x.buf, y.buf);
         MR(z, temp);
+#endif
     }
 
     static void sqr(Fp& z, const Fp& x)
     {
+#ifdef USE_NEW_MCL
+        mcl_mont(z.buf, x.buf, x.buf);
+#else
         FpDbl temp;
         mcl::bint::sqrT<N>(temp.buf, x.buf);
         MR(z, temp);
+#endif
     }
 
     static void pow(Fp& z, const Fp& x, const mpz_class& y)

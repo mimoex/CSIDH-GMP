@@ -1,11 +1,12 @@
-SRC=main.cpp CSIDH.cpp Montgomery.cpp fp.cpp
+SRC=main.cpp CSIDH.cpp Montgomery.cpp fp.cpp mcl.cpp
 OBJ=$(SRC:.cpp=.o)
 DEP=$(SRC:.cpp=.d)
 
 
 TARGET=csidh
 CFLAGS+=-O3 -Wall -Wextra -DNDEUBG -g -I ./mcl/include
-LDFLAGS=-lgmp -lgmpxx -L ./mcl/lib -lmcl
+CFLAGS+= -I ./mcl/src
+LDFLAGS=-L ./mcl/lib -lmcl -lgmpxx -lgmp
 
 all: $(TARGET)
 
@@ -15,7 +16,7 @@ all: $(TARGET)
 -include $(DEP)
 
 $(TARGET): $(OBJ)
-	$(CXX) -o $@ $? $(LDFLAGS)
+	$(CXX) -o $@ $(OBJ) $(LDFLAGS)
 
 clean:
 	$(RM) -rf $(OBJ) $(DEP) $(TARGET)
