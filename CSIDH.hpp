@@ -16,14 +16,12 @@ struct seckey {
 };
 
 //MontgomeryCurve関連
-Point xMUL(const Point& P, const Point& A_1, const mpz_class& n);
-Fp calc_twist(const Fp& a, const Fp& x);
-void IsogenyCalc(const Point& A, const Point& P, const Point& K, const size_t& k, Point* Aout, Point* Pout);
+Point xMULmon(const Point& Pm, const Point& A_1, const mpz_class& n);
+void calc_twist(Fp& z, const Fp& a_mont, const Fp& x_mont);
+void IsogenyCalc(Point& Am, Point& Pm, const Point& Km, const size_t& k);
 
 //CSIDH関連
 bool validate(const mpz_class& a);
 mpz_class action(const mpz_class& A, const seckey& Key);
 
 void genCSIDHkey(seckey* K);
-
-Point xMULmon(const Point& Pm, const Point& A_1, const mpz_class& n);

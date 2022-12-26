@@ -69,93 +69,43 @@ void xDBLADDmon(const Point& Pm, const Point& Qm, const Point& Rm, const Point& 
 	Fp::mul(ADDout.X, ADDout.X, Rm.Z);
 }
 
-//モンゴメリ曲線のスカラー倍
-Point xMUL(const Point& P, const Point& A_1, const mpz_class& n) {
-	Point x0, Ap24;
-	Point x0m, x1m, Pm, Ap24m;
-
-	Fp::mul(Pm.X, P.X, Fp::p.R2);
-	Fp::mul(Pm.Z, P.Z, Fp::p.R2);
-
-	//x0 = P;
-	x0m = Pm;
-
-	//a24の計算	a24=(a+2)/4
-	Fp::add(Ap24.X, A_1.X, Fp::fptwo);
-
-	Fp::mul_test(Ap24.X, Ap24.X, Fp::p.inv4);
-	Ap24.Z.buf[0] = 1;
-
-	Fp::mul(Ap24m.X, Ap24.X, Fp::p.R2);
-	Fp::mul(Ap24m.Z, Ap24.Z, Fp::p.R2);
-
-	x1m = xDBLmon(Pm, Ap24m);
-
-	size_t bit_size;
-	bit_size = mpz_sizeinbase(n.get_mpz_t(), 2);
-
-	for (int i = bit_size - 2; i >= 0; i--) {
-		if (mpz_tstbit(n.get_mpz_t(), i) == 0) xDBLADDmon(x0m, x1m, Pm, Ap24m, x0m, x1m);
-		else xDBLADDmon(x1m, x0m, Pm, Ap24m, x1m, x0m);
-	}
-
-	Fp::MR512(x0.X, x0m.X);
-	Fp::MR512(x0.Z, x0m.Z);
-	return x0;
-}
-
 //スカラー倍(Montgomeryで返す)
-Point xMULmon(const Point& Pm, const Point& A_1, const mpz_class& n) {
-	Point Ap24;
+Point xMULmon(const Point& Pm, const Point& Am, const mpz_class& n) {
 	Point x0m, x1m, Ap24m;
 
 	x0m = Pm;
 
 	//a24の計算	a24=(a+2)/4
-	Fp::add(Ap24.X, A_1.X, Fp::fptwo);
+	Fp::add(Ap24m.X, Am.X, Fp::MR2);
+	Fp::mul(Ap24m.X, Ap24m.X, Fp::MRinv4);
+	Ap24m.Z = Fp::mrR2;
 
-	Fp::mul_test(Ap24.X, Ap24.X, Fp::p.inv4);
-	Ap24.Z.buf[0] = 1;
-
-	Fp::mul(Ap24m.X, Ap24.X, Fp::p.R2);
-	Fp::mul(Ap24m.Z, Ap24.Z, Fp::p.R2);
-
-	x1m = xDBLmon(Pm, Ap24m);
+	x1m = xDBLmon(Pm, Ap24m);	//2P
 
 	size_t bit_size;
 	bit_size = mpz_sizeinbase(n.get_mpz_t(), 2);
 
-	for (int i = bit_size - 2; i >= 0; i--) {
+	for (int i = bit_size - 2; i >= 0; --i) {
 		if (mpz_tstbit(n.get_mpz_t(), i) == 0) xDBLADDmon(x0m, x1m, Pm, Ap24m, x0m, x1m);
 		else xDBLADDmon(x1m, x0m, Pm, Ap24m, x1m, x0m);
 	}
-
 	return x0m;
 }
 
 //モンゴメリ曲線右辺の計算
-Fp calc_twist(const Fp& a, const Fp& x_mont) {
-	Fp result, temp1, a_mont;
-
-	Fp::mul(a_mont, a, Fp::p.R2);
-	Fp::add(temp1, x_mont, a_mont);	// x+a
-	Fp::mul(temp1, temp1, x_mont); // x^2 + ax
-	Fp::add(temp1, temp1, Fp::p.mrR2); // x^2 + ax + 1
-	Fp::mul(result, temp1, x_mont); // x^3 + ax^2 + x
-	return result;
+void calc_twist(Fp& z, const Fp & a_mont, const Fp& x_mont) {
+	Fp::add(z, x_mont, a_mont);	// x+a
+	Fp::mul(z, z, x_mont); // x^2 + ax
+	Fp::add(z, z, Fp::p.mrR2); // x^2 + ax + 1
+	Fp::mul(z, z, x_mont); // x^3 + ax^2 + x
 }
 
 //Calc Isogeny
-void IsogenyCalc(const Point& A, const Point& Pm, const Point& Km, const size_t& k,
-	Point* Aout, Point* Pout) {
+void IsogenyCalc(Point& Am, Point& Pm, const Point& Km, const size_t& k) {
 
 	Fp tmp0, tmp1, tmp2, Psum, Pdif;
 	Point ed, prod, edt1;
-	Point Am, Qm, Ap24_C24m, temp1;
-	Point Aoutm, Poutm;
-
-	Fp::mul(Am.X, A.X, Fp::p.R2);
-	Fp::mul(Am.Z, A.Z, Fp::p.R2);
+	Point Qm, Ap24_C24m, temp1;
 
 	Fp::add(Ap24_C24m.X, Am.X, Fp::MR2);
 	Ap24_C24m.Z = Fp::p.MR4;
@@ -194,8 +144,8 @@ void IsogenyCalc(const Point& A, const Point& Pm, const Point& Km, const size_t&
 	//Evaluation
 	Fp::sqr(Qm.X, Qm.X);
 	Fp::sqr(Qm.Z, Qm.Z);
-	Fp::mul(Pout->X, Pm.X, Qm.X);
-	Fp::mul(Pout->Z, Pm.Z, Qm.Z);
+	Fp::mul(Pm.X, Pm.X, Qm.X);
+	Fp::mul(Pm.Z, Pm.Z, Qm.Z);
 
 	//A faster way to the CSIDH p10くらい
 	/* A = 2*(1+d)/(1-d) */
@@ -220,6 +170,6 @@ void IsogenyCalc(const Point& A, const Point& Pm, const Point& Km, const size_t&
 
 	// compute Montgomery params
 	Fp::add(temp1.X, ed.X, ed.Z);
-	Fp::sub(Aout->Z, ed.X, ed.Z);
-	Fp::add(Aout->X, temp1.X, temp1.X);
+	Fp::sub(Am.Z, ed.X, ed.Z);
+	Fp::add(Am.X, temp1.X, temp1.X);
 }

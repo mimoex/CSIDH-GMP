@@ -38,6 +38,7 @@ struct Fp {
     static Fp fpone; //fptwo.buf[0]=1;
     static Fp fptwo; //fptwo.buf[0]=2;
     static mpz_class p_plus_1_quarte;
+    static Fp MRinv4;
 
     static void set_mpz(Fp& z, const mpz_class& x)
     {
@@ -53,17 +54,24 @@ struct Fp {
     //足し算 Mod p OK
     static void add(Fp& z, const Fp& x, const Fp& y)
     {
+#ifdef USE_NEW_MCL
+        mcl_add(z.buf, x.buf, y.buf);
+#else
         mcl::bint::addT<N>(z.buf, x.buf, y.buf);
         if (mcl::bint::cmpGeT<N>(z.buf, p.buf))
             mcl::bint::subT<N>(z.buf, z.buf, p.buf);
+#endif
     }
 
     //引き算 Mod p OK
     static void sub(Fp& z, const Fp& x, const Fp& y)
     {
-        if (mcl::bint::subT<N>(z.buf, x.buf, y.buf)) {
+#ifdef USE_NEW_MCL
+        mcl_sub(z.buf, x.buf, y.buf);
+#else
+        if (mcl::bint::subT<N>(z.buf, x.buf, y.buf))
             mcl::bint::addT<N>(z.buf, z.buf, p.buf);
-        }
+#endif
     }
 
     //MR    In:1024bit, Out:512bit
@@ -80,7 +88,7 @@ struct Fp {
         if(mcl::bint::cmpGeT<N>(tempH, p.p.buf))
             mcl::bint::subT<N>(z.buf, tempH, p.p.buf);
         else {
-            for (int i = 0; i < N; i++) {
+            for (int i = 0; i < N; ++i) {
                 z.buf[i] = tempH[i];
             }
         }
@@ -91,10 +99,11 @@ struct Fp {
     {
         FpDbl temp;
 
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 8; ++i) {
             temp.buf[i] = x.buf[i];
         }
-        MR(z, temp);
+        //MR(z, temp);
+        mcl_mod(z.buf, temp.buf);
     }
 
     //掛け算 Mod p(1回で完結)
@@ -102,10 +111,20 @@ struct Fp {
     {
         Fp temp512;
         FpDbl temp;
+#ifdef USE_NEW_MCL
+        mcl_mont(temp512.buf, x.buf, y.buf);
+#else
         mcl::bint::mulT<N>(temp.buf, x.buf, y.buf);
         MR(temp512, temp);
+#endif
+
+#ifdef USE_NEW_MCL
+        mcl_mont(z.buf, temp512.buf, R2.buf);
+#else
         mcl::bint::mulT<N>(temp.buf, temp512.buf, p.R2.buf);
         MR(z, temp);
+#endif
+       
     }
 
     //掛け算 Mod p(Montgomeryで返す)
@@ -135,7 +154,7 @@ struct Fp {
     {
         Fp result = Fp::mrR2;
 
-        for (int i = nbit - 1; i >= 0; i--) {
+        for (int i = nbit - 1; i >= 0; --i) {
             sqr(result, result);
             if (mpz_tstbit(y.get_mpz_t(), i) == 1) mul(result, result, x);
         }
@@ -198,7 +217,8 @@ struct Fp {
         return 0;
     }
 
-    static void div_minus2(Fp& z, const Fp& x, const Fp& y)
+/*
+    static void div(Fp& z, const Fp& x, const Fp& y)
     {
         Fp temp, xmon, ymon, invy;
 
@@ -209,19 +229,19 @@ struct Fp {
 
         MR512(z, temp);
     }
+    */
 
-    static void div(Fp& z, const Fp& x, const Fp& y)
+    static void div(Fp& z, const Fp& xmon, const Fp& ymon)
     {
-        Fp temp, xmon, ymon, yinv;
+        Fp yinv, y, ytemp;
 
-        mul(xmon, x, p.R2);
+        MR512(y, ymon);
         binary_inv(yinv, y);
-        mul(ymon, yinv, p.R2);  //yinv*R
+        mul(ytemp, yinv, p.R2);  //yinv*R
 
-        mul(temp, xmon, ymon);  // x * y^-1
-
-        MR512(z, temp);
+        mul(z, xmon, ytemp);  // x * y^-1
     }
+
 
     // x^3+ Ax^2 + x (p mod 4 ≡ 3) is square => return +1
     // else => return -1

@@ -19,6 +19,7 @@ mpz_class Fp::modmpz;
 Fp Fp::fpone;
 Fp Fp::fptwo;
 mpz_class Fp::p_plus_1_quarte;
+Fp Fp::MRinv4;
 
 using namespace std;
 
@@ -31,6 +32,7 @@ bool csidh()
 
     t0 = clock();
     secA = testAkey;
+    //genCSIDHkey(&secA);
     t1 = clock();
     cout << "Aさんの秘密鍵:" << endl;
     for (int i = 0; i < l; i++) cout << secA.e[i] << ", ";
@@ -59,8 +61,8 @@ bool csidh()
     seckey secB;
 
     t0 = clock();
-    //genCSIDHkey(&secB);
     secB = testBkey;
+    //genCSIDHkey(&secB);
     t1 = clock();
 
     cout << "Bさんの秘密鍵:" << endl;
