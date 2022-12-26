@@ -217,6 +217,53 @@ struct Fp {
         return 0;
     }
 
+    static int montgomery_inv(Fp& z, const Fp& y)
+    {
+        Fp u, v, x1, x2, k, zero;
+        u = y; v = p; x1 = fpone;
+
+        if (mcl::bint::isZeroT<N>(y.buf)) {
+            throw std::range_error("Divided by zero.");
+            return -1;
+        }
+        else {
+            while (mcl::bint::cmpGtT<N>(v.buf, zero.buf)) {
+
+                if ((v.buf[0] & 1) == 0) {
+                    mcl::bint::shrT<N>(v.buf, v.buf, 1);        //u >>= 1;
+                    mcl::bint::addT<N>(x1.buf, x1.buf, x1.buf);    //r += p;
+                }
+                else if ((u.buf[0] & 1) == 0) {
+                    mcl::bint::shrT<N>(u.buf, u.buf, 1);        //v >>= 1;
+                    mcl::bint::addT<N>(x2.buf, x2.buf, x2.buf);
+                }
+                else if (mcl::bint::cmpGeT<N>(v.buf, u.buf)) {
+                    mcl::bint::subT<N>(v.buf, v.buf, u.buf);
+                    mcl::bint::shrT<N>(v.buf, v.buf, 1);
+
+                    mcl::bint::addT<N>(x2.buf, x2.buf, x1.buf);
+
+                    mcl::bint::addT<N>(x1.buf, x1.buf, x1.buf);
+                }
+                else {
+                    mcl::bint::subT<N>(u.buf, u.buf, v.buf);
+                    mcl::bint::shrT<N>(u.buf, u.buf, 1);
+
+                    mcl::bint::addT<N>(x1.buf, x2.buf, x1.buf);
+
+                    mcl::bint::addT<N>(x2.buf, x2.buf, x2.buf);
+                }
+                mcl::bint::addT<N>(k.buf, k.buf, fpone.buf);
+
+                if (mcl::bint::cmpGeT<N>(v.buf, p.buf)) {
+                    sub(x1, x1, p);
+                }
+            }
+            //ここまで( x1=(a^−1)*(2^k) mod p )
+        }
+        return 0;
+    }
+
 /*
     static void div(Fp& z, const Fp& x, const Fp& y)
     {
