@@ -260,6 +260,20 @@ struct Fp {
                 }
             }
             //ここまで( x1=(a^−1)*(2^k) mod p )
+            Fp twoWt, beki;
+            Fp::FpDbl beki_temp;
+            mpz_class bekijo;
+            if (mcl::bint::cmpLtT<N>(k.buf, wt.buf)) {
+                mul(x1, x1, R2jo);
+                mcl::bint::addT<N>(k.buf, k.buf, wt.buf);
+            }
+            mul(x1, x1, R2jo);
+
+            mcl::bint::mulT<N>(beki_temp.buf, fptwo.buf, wt.buf);
+            mcl::bint::subT<2*N>(beki.buf, beki_temp.buf, k.buf);
+            get_mpz(bekijo, beki);
+            pow(twoWt, fptwo, bekijo);
+            mul(z, x1, twoWt);
         }
         return 0;
     }
