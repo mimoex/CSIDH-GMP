@@ -161,6 +161,29 @@ struct Fp {
         z = result;
     }
 
+        static void pow_window(Fp& z, const Fp& x, const mpz_class& y)
+    {
+        Fp exp, t;
+        set_mpz(exp, y);
+        Fp pre[16];
+
+        pre[0] = fpone;
+        pre[1] = x;
+        for (int i = 2; i < 16; i=i+2) {
+            sqr(pre[i], pre[i / 2]);
+            mul(pre[i + 1], pre[i], x);
+        }
+        z = fpone;
+        for (int i = nbit / 4 - 1; i >= 0; --i) {
+            for (int j = 0; j < 4; ++j) {
+                sqr(z, z);
+            }
+            int idx = (exp.buf[i / 16] >> uint64_t((i % 16) * 4)) & 15;
+            mul(z, z, pre[idx]);
+        }
+
+    }
+
     //x^-1 = x^(p-2)
     static void inv(Fp& z, const Fp& x)
     {
