@@ -240,10 +240,17 @@ struct Fp {
         return 0;
     }
 
+    //Partial Montgomery inversion in Fp
+    //imput: p > 2, a ∈[1, p −1], and n
+    //output: z = (a^−1)*(2^k) mod p.
     static int montgomery_inv(Fp& z, const Fp& y)
     {
-        Fp u, v, x1, x2, k, zero;
+        int k=0, wt=512;
+        Fp u, v, x1, x2, zero;
         u = y; v = p; x1 = fpone;
+        Fp R2jo;
+        mpz_export(&R2jo.buf, NULL, -1, 8, 0, 0, mpz_class("3947327457839989874159000189894703360015228924095003483386664762373288376865104950408299280378777970576316508563621754752968328106814122407552099437904268").get_mpz_t());
+
 
         if (mcl::bint::isZeroT<N>(y.buf)) {
             throw std::range_error("Divided by zero.");
@@ -253,11 +260,11 @@ struct Fp {
             while (mcl::bint::cmpGtT<N>(v.buf, zero.buf)) {
 
                 if ((v.buf[0] & 1) == 0) {
-                    mcl::bint::shrT<N>(v.buf, v.buf, 1);        //u >>= 1;
-                    mcl::bint::addT<N>(x1.buf, x1.buf, x1.buf);    //r += p;
+                    mcl::bint::shrT<N>(v.buf, v.buf, 1);
+                    mcl::bint::addT<N>(x1.buf, x1.buf, x1.buf);
                 }
                 else if ((u.buf[0] & 1) == 0) {
-                    mcl::bint::shrT<N>(u.buf, u.buf, 1);        //v >>= 1;
+                    mcl::bint::shrT<N>(u.buf, u.buf, 1);
                     mcl::bint::addT<N>(x2.buf, x2.buf, x2.buf);
                 }
                 else if (mcl::bint::cmpGeT<N>(v.buf, u.buf)) {
@@ -276,26 +283,29 @@ struct Fp {
 
                     mcl::bint::addT<N>(x2.buf, x2.buf, x2.buf);
                 }
-                mcl::bint::addT<N>(k.buf, k.buf, fpone.buf);
+                k += 1;
 
-                if (mcl::bint::cmpGeT<N>(v.buf, p.buf)) {
+                if (mcl::bint::cmpGeT<N>(x1.buf, p.buf)) {
                     sub(x1, x1, p);
                 }
             }
-            //ここまで( x1=(a^−1)*(2^k) mod p )
-            Fp twoWt, beki;
-            Fp::FpDbl beki_temp;
+
+            //ここまで x1=(y^-1)*(2^k)% mod
+
+            Fp twoWt;
+            mpz_class twoWtMPZ;
+            int beki_temp, beki;
             mpz_class bekijo;
-            if (mcl::bint::cmpLtT<N>(k.buf, wt.buf)) {
+            if (k< wt) {
                 mul(x1, x1, R2jo);
-                mcl::bint::addT<N>(k.buf, k.buf, wt.buf);
+                k += wt;
             }
             mul(x1, x1, R2jo);
 
-            mcl::bint::mulT<N>(beki_temp.buf, fptwo.buf, wt.buf);
-            mcl::bint::subT<2*N>(beki.buf, beki_temp.buf, k.buf);
-            get_mpz(bekijo, beki);
-            pow(twoWt, fptwo, bekijo);
+            beki_temp = 2 * wt;
+            beki = beki_temp - k;
+            mpz_powm_ui(twoWtMPZ.get_mpz_t(), mpz_class(2).get_mpz_t(), beki, modmpz.get_mpz_t());
+            set_mpz(twoWt, twoWtMPZ);
             mul(z, x1, twoWt);
         }
         return 0;
