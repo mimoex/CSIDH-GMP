@@ -1,3 +1,4 @@
+#define MCL_USE_PROF
 #include <mcl/gmp_util.hpp>
 #include "mcl.hpp"
 #include "../../mcl/src/bint_impl.hpp"
