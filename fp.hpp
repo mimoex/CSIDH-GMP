@@ -345,8 +345,8 @@ struct Fp {
         pow(temp, x, p_plus_1_quarte);     //x^((p + 1) / 4)
         pow(check, temp, 2);
         if (mcl::bint::cmpEqT<N>(x.buf, check.buf))
-            return 1;
-        return -1;
+            return 0;
+        return 1;
     }
 
     //有限体pから乱数生成

@@ -61,7 +61,7 @@ bool isZero(const int* e, int n)
     return true;
 }
 
-
+/*
 mpz_class action(const mpz_class& Am, const seckey& Key) {
     mpz_class k, mul, rhs_mpz, APointX_result;
 
@@ -132,6 +132,107 @@ mpz_class action(const mpz_class& Am, const seckey& Key) {
 
         if (isZero(e, l)) break;
     }
+    Fp::get_mpz(APointX_result, A_pointm.X);
+    return APointX_result;
+}
+*/
+
+mpz_class action(const mpz_class& Am, const seckey& Key) {
+    mpz_class rhs_mpz, APointX_result;
+
+    mpz_class k[2];
+    k[0] = 4;
+    k[1] = 4;
+
+    size_t e[2][l];
+
+    for (size_t i = 0; i < l; ++i) {
+
+        int t = Key.e[i];
+
+        if (t > 0) {
+            e[0][i] = t;
+            e[1][i] = 0;
+            k[1]*= primes[i];
+            //k[1] = (k[1] * primes[i]) % Fp::modmpz;
+        }
+        else if (t < 0) {
+            e[1][i] = -t;
+            e[0][i] = 0;
+            k[0] *= primes[i];
+            //k[0] = (k[0] * primes[i]) % Fp::modmpz;
+        }
+        else {
+            e[0][i] = 0;
+            e[1][i] = 0;
+            k[0] *= primes[i];
+            //k[0] = (k[0] * primes[i]) % Fp::modmpz;
+            k[1] *= primes[i];
+            //k[1] = (k[1] * primes[i]) % Fp::modmpz;
+        }
+    }
+
+    Point A_pointm;
+    Fp::set_mpz(A_pointm.X, Am);
+    A_pointm.Z = Fp::mrR2;
+
+    bool done[2] = { false, false };
+    
+    do {
+
+        Fp rhs;
+        Point Pm;
+        Fp::RandomGen(Pm.X);
+        Pm.Z = Fp::mrR2;
+
+        calc_twist(rhs, A_pointm.X, Pm.X);
+
+        bool s = Fp::isSquare(rhs);    //これでも動く
+        //Fp::get_mpz(rhs_mpz, rhs);
+        //int s = mpz_kronecker(rhs_mpz.get_mpz_t(), Fp::modmpz.get_mpz_t());     //こっちのほうが速い
+        if (done[s])
+            continue;
+
+        Pm = xMULmon(Pm, A_pointm, k[s]);
+
+        done[s] = true;
+
+        for (size_t i = 0; i < l; ++i) {
+            if (e[s][i]!=0) {
+                mpz_class mul = 1;
+
+                Point Rm;
+
+                for (size_t j = i + 1; j < l; ++j) {
+                    if (e[s][j]) {
+                        mul *= primes[j];
+                        //mul = (mul * primes[j]) % Fp::modmpz;
+                    }
+                }
+                    
+                Rm = xMULmon(Pm, A_pointm, mul);
+
+
+
+                if (!mcl::bint::isZeroN(Rm.Z.buf, Fp::N)) {
+                    IsogenyCalc(A_pointm, Pm, Rm, primes[i], &A_pointm, &Pm);  //iso_A, iso_Point
+
+                    e[s][i] = e[s][i] - 1;
+                    if (e[s][i] == 0) {
+                        k[s] *= primes[i];
+                        //k[s] = (k[s] * primes[i]) % Fp::modmpz;
+                    }
+                        
+                }
+            }
+            done[s] = done[s] && (e[s][i]==0);
+            
+        }
+        Fp::div(A_pointm.X, A_pointm.X, A_pointm.Z);
+        A_pointm.Z = Fp::mrR2;
+
+    } while (!(done[0] && done[1]));
+
     Fp::get_mpz(APointX_result, A_pointm.X);
     return APointX_result;
 }
