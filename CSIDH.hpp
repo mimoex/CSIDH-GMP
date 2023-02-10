@@ -18,7 +18,7 @@ struct seckey {
 //MontgomeryCurve関連
 Point xMULmon(const Point& Pm, const Point& A_1, const mpz_class& n);
 void calc_twist(Fp& z, const Fp& a_mont, const Fp& x_mont);
-void IsogenyCalc(Point& Am, Point& Pm, const Point& Km, const size_t& k);
+void IsogenyCalc(Point *A, Point *P, const Point& K, const size_t& k);
 
 //CSIDH関連
 bool validate(const mpz_class& a);

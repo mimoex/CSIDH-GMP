@@ -21,21 +21,24 @@ Point Montgomery_ADDmon(const Point& Pm, const Point& Qm, const Point& Rm) {
 }
 
 // https://www.hyperelliptic.org/EFD/g1p/auto-montgom-xz.html#doubling-dbl-1987-m-2
-Point xDBLmon(const Point& Pm, const Point& Ap24m)
+Point xDBLmon(const Point& Pm, const Point* Ap24m)
 {
-	Fp t0, t1, t2, t3;
+	Fp a, b, c;
 	Point resultm;
 
-	Fp::sub(t0, Pm.X, Pm.Z);
-	Fp::add(t1, Pm.X, Pm.Z);
-	Fp::sqr(t0, t0);
-	Fp::sqr(t1, t1);
-	Fp::mul(resultm.Z, Ap24m.Z, t0);
-	Fp::mul(resultm.X, resultm.Z, t1);
-	Fp::sub(t2, t1, t0);
-	Fp::mul(t3, Ap24m.X, t2);
-	Fp::add(resultm.Z, resultm.Z, t3);
-	Fp::mul(resultm.Z, resultm.Z, t2);
+	Fp::add(a, Pm.X, Pm.Z);
+	Fp::sqr(a, a);
+	Fp::sub(b, Pm.X, Pm.Z);
+	Fp::sqr(b, b);
+	Fp::sub(c, a, b);
+	Fp::add(b, b, b); Fp::add(b, b, b);	// x4
+	Fp::mul(b, b, Ap24m->Z);
+	Fp::mul(resultm.X, a, b);
+	Fp::add(a, Ap24m->Z, Ap24m->Z);
+	Fp::add(a, a, Ap24m->X);
+	Fp::mul(a, a, c);
+	Fp::add(a, a, b);
+	Fp::mul(resultm.Z, a, c);
 	return resultm;
 }
 
@@ -56,6 +59,7 @@ void xDBLADDmon(const Point& Pm, const Point& Qm, const Point& Rm, const Point& 
 
 	Fp::mul(t1, t1, ADDout.X);
 	Fp::sub(t2, DBLout.X, DBLout.Z);
+	Fp::mul(DBLout.Z, DBLout.Z, Ap24m.Z);
 	Fp::mul(DBLout.X, DBLout.X, DBLout.Z);
 	Fp::mul(ADDout.X, Ap24m.X, t2);
 	Fp::sub(ADDout.Z, t0, t1);
@@ -73,45 +77,42 @@ void xDBLADDmon(const Point& Pm, const Point& Qm, const Point& Rm, const Point& 
 Point xMULmon(const Point& Pm, const Point& Am, const mpz_class& n) {
 	Point x0m, x1m, Ap24m;
 
-	x0m = Pm;
+	x0m = Pm;	//R
 
-	//a24の計算	a24=(a+2)/4
-	Fp::add(Ap24m.X, Am.X, Fp::MR2);
-	Fp::mul(Ap24m.X, Ap24m.X, Fp::MRinv4);
-	Ap24m.Z = Fp::mrR2;
+	//a24の計算	a24=(a+2c:4c)
+	Fp::add(Ap24m.X, Am.Z, Am.Z);
+	Fp::add(Ap24m.Z, Ap24m.X, Ap24m.X);
+	Fp::add(Ap24m.X, Ap24m.X, Am.X);
 
-	x1m = xDBLmon(Pm, Ap24m);	//2P
+	x1m.X = Fp::mrR2;
+
 
 	size_t bit_size;
-	bit_size = mpz_sizeinbase(n.get_mpz_t(), 2);
+	bit_size = mpz_sizeinbase(n.get_mpz_t(), 2) -1;
 
-	for (int i = bit_size - 2; i >= 0; --i) {
-		if (mpz_tstbit(n.get_mpz_t(), i) == 0) xDBLADDmon(x0m, x1m, Pm, Ap24m, x0m, x1m);
+	do {
+		bool bit = mpz_tstbit(n.get_mpz_t(), bit_size);
+
+		if (bit) xDBLADDmon(x0m, x1m, Pm, Ap24m, x0m, x1m);
 		else xDBLADDmon(x1m, x0m, Pm, Ap24m, x1m, x0m);
-	}
-	return x0m;
+	} while (bit_size--);
+	return x1m;
 }
 
-//モンゴメリ曲線右辺の計算
-void calc_twist(Fp& z, const Fp & a_mont, const Fp& x_mont) {
-	Fp::add(z, x_mont, a_mont);	// x+a
-	Fp::mul(z, z, x_mont); // x^2 + ax
-	Fp::add(z, z, Fp::p.mrR2); // x^2 + ax + 1
-	Fp::mul(z, z, x_mont); // x^3 + ax^2 + x
-}
 
 //Calc Isogeny
-void IsogenyCalc(Point& Am, Point& Pm, const Point& Km, const size_t& k) {
+void IsogenyCalc(Point *Am, Point *Pm, const Point& Km, const size_t& k) {
 
 	Fp tmp0, tmp1, tmp2, Psum, Pdif;
 	Point ed, prod, edt1;
 	Point Qm, Ap24_C24m, temp1;
+	Point Aoutm, Poutm;
 
-	Fp::add(Ap24_C24m.X, Am.X, Fp::MR2);
-	Ap24_C24m.Z = Fp::p.MR4;
+	//Fp::add(Ap24_C24m.X, Am->X, Fp::MR2);
+	//Ap24_C24m.Z = Fp::p.MR4;
 
-	Fp::add(Psum, Pm.X, Pm.Z);
-	Fp::sub(Pdif, Pm.X, Pm.Z);
+	Fp::add(Psum, Pm->X, Pm->Z);
+	Fp::sub(Pdif, Pm->X, Pm->Z);
 
 	Fp::sub(prod.X, Km.X, Km.Z);
 	Fp::add(prod.Z, Km.X, Km.Z);
@@ -123,12 +124,13 @@ void IsogenyCalc(Point& Am, Point& Pm, const Point& Km, const size_t& k) {
 
 	Point M[3] = { Km };
 
-	M[1] = xDBLmon(Km, Ap24_C24m);
+	M[1] = xDBLmon(Km, Am);
 
 	for (int i = 1; i < (k >> 1); ++i) {
 
 		if (i >= 2)
 			M[i % 3] = Montgomery_ADDmon(M[(i - 1) % 3], Km, M[(i - 2) % 3]);
+
 
 		Fp::sub(tmp1, M[i % 3].X, M[i % 3].Z);
 		Fp::add(tmp0, M[i % 3].X, M[i % 3].Z);
@@ -144,14 +146,14 @@ void IsogenyCalc(Point& Am, Point& Pm, const Point& Km, const size_t& k) {
 	//Evaluation
 	Fp::sqr(Qm.X, Qm.X);
 	Fp::sqr(Qm.Z, Qm.Z);
-	Fp::mul(Pm.X, Pm.X, Qm.X);
-	Fp::mul(Pm.Z, Pm.Z, Qm.Z);
+	Fp::mul(Pm->X, Pm->X, Qm.X);
+	Fp::mul(Pm->Z, Pm->Z, Qm.Z);
 
 	//A faster way to the CSIDH p10くらい
 	/* A = 2*(1+d)/(1-d) */
-	Fp::add(edt1.Z, Am.Z, Am.Z);
-	Fp::add(ed.X, Am.X, edt1.Z);
-	Fp::sub(ed.Z, Am.X, edt1.Z);
+	Fp::add(ed.Z, Am->Z, Am->Z);
+	Fp::add(ed.X, Am->X, ed.Z);
+	Fp::sub(ed.Z, Am->X, ed.Z);
 
 	Fp::pow(ed.X, ed.X, k);
 	Fp::pow(ed.Z, ed.Z, k);
@@ -170,6 +172,6 @@ void IsogenyCalc(Point& Am, Point& Pm, const Point& Km, const size_t& k) {
 
 	// compute Montgomery params
 	Fp::add(temp1.X, ed.X, ed.Z);
-	Fp::sub(Am.Z, ed.X, ed.Z);
-	Fp::add(Am.X, temp1.X, temp1.X);
+	Fp::sub(Am->Z, ed.X, ed.Z);
+	Fp::add(Am->X, temp1.X, temp1.X);
 }
