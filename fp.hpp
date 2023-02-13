@@ -240,6 +240,35 @@ struct Fp {
         return 0;
     }
 
+    // constant-time gcd
+    // https://eprint.iacr.org/2019/266
+    static int gcd_const_time(Fp& z, const Fp& a_in, const Fp& b_in)
+    {
+        Fp g, r;
+        uint64_t mask = 0;
+        int bit = 1, shifts = 0;
+
+        mcl::bint::shiftLeft(g.buf, b_in.buf, 1, N);
+        mcl::bint::shiftLeft(r.buf, a_in.buf, 1, N);
+
+        /* 2のべき乗を求める */
+        for (int i = 0; i < N && i < N; i++) {
+            mask = ~(r.buf[i] | g.buf[i]);
+            for (int j = 0; j < sizeof(uint64_t); j++) {
+                bit &= mask;
+                shifts += bit;
+                mask >>= 1;
+            }
+        }
+
+        mcl::bint::shiftLeft(r.buf, r.buf, shifts, N);
+        mcl::bint::shiftLeft(g.buf, g.buf, shifts, N);
+
+        //途中
+
+
+    }
+
     //Partial Montgomery inversion in Fp
     //imput: p > 2, a ∈[1, p −1], and n
     //output: z = (a^−1)*(2^k) mod p.
