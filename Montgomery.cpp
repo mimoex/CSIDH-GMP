@@ -99,6 +99,13 @@ Point xMULmon(const Point& Pm, const Point& Am, const mpz_class& n) {
 	return x1m;
 }
 
+//モンゴメリ曲線右辺の計算
+void calc_twist(Fp& z, const Fp & a_mont, const Fp& x_mont) {
+	Fp::add(z, x_mont, a_mont);	// x+a
+	Fp::mul(z, z, x_mont); // x^2 + ax
+	Fp::add(z, z, Fp::p.mrR2); // x^2 + ax + 1
+	Fp::mul(z, z, x_mont); // x^3 + ax^2 + x
+}
 
 //Calc Isogeny
 void IsogenyCalc(Point *Am, Point *Pm, const Point& Km, const size_t& k) {
