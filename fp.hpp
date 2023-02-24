@@ -244,7 +244,7 @@ struct Fp {
     // https://eprint.iacr.org/2019/266
     static int gcd_const_time(Fp& z, const Fp& a_in, const Fp& b_in)
     {
-        Fp g, r;
+        Fp g, r, temp;
         uint64_t mask = 0;
         int bit = 1, shifts = 0;
 
@@ -252,7 +252,7 @@ struct Fp {
         mcl::bint::shiftLeft(r.buf, a_in.buf, 1, N);
 
         /* 2のべき乗を求める */
-        for (int i = 0; i < N && i < N; i++) {
+        for (int i = 0; i < N ; i++) {
             mask = ~(r.buf[i] | g.buf[i]);
             for (int j = 0; j < sizeof(uint64_t); j++) {
                 bit &= mask;
@@ -261,11 +261,61 @@ struct Fp {
             }
         }
 
+        mcl::bint::shiftRight(r.buf, r.buf, shifts, N);
+        mcl::bint::shiftRight(g.buf, g.buf, shifts, N);
+
+        if (~r.buf[0] & 1) {
+            Fp tmp;
+            tmp = r;
+            r = g;
+            g = r;
+        }
+
+        int rlen, glen;
+        rlen = mpn_sizeinbase(r.buf, N, 2);
+        glen = mpn_sizeinbase(g.buf, N, 2);
+
+        int m;
+        if (rlen >= glen) {
+            m = 4 + 3 * rlen;
+        }
+        else {
+            m = 4 + 3 * glen;
+        }
+
+
+        int delta = 1, cond = 0;
+        for (int i = 0; i < m; i++) {
+            cond = (-delta >> (8 * sizeof(delta) - 1)) & g.buf[0] & 1
+                & (~((N - 1) >> (sizeof(N) * 8 - 1)));
+            delta = (-cond & -delta) | ((cond - 1) & delta);
+
+
+            if (cond) {
+                Fp tmp;
+                tmp = r;
+                r = g;
+                g = r;
+            }
+
+            /* elimination step */
+            delta++;
+            add(temp, g, r);
+
+            if (g.buf[0] & 1 & (~((N - 1) >> (sizeof(N) * 8 - 1)))) {
+                Fp tmp;
+                tmp = g;
+                g = temp;
+                temp = tmp;
+            }
+            mcl::bint::shiftRight(g.buf, g.buf, shifts, N);
+        }
+        
         mcl::bint::shiftLeft(r.buf, r.buf, shifts, N);
-        mcl::bint::shiftLeft(g.buf, g.buf, shifts, N);
+        mcl::bint::shiftRight(r.buf, r.buf, shifts, 1);
 
-        //途中
-
+        z = r;
+        return 0;
 
     }
 
