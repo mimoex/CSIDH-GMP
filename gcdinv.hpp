@@ -1,19 +1,20 @@
 #pragma once
 #include "fp.hpp"
 
-size_t inv_loop_N = 59;
+size_t inv_loop_N = 10;
 
 typedef struct {
     int64_t u, v, q ,r;
 } trans2x2;
 
-static int64_t divsteps(int64_t zeta, uint64_t f0, uint64_t g0, trans2x2* t)
+//OK
+static int64_t divsteps(int64_t zeta, const Fp& f0, const Fp& g0, trans2x2* t)
 {
-    uint64_t u = 8, v = 0, q = 0, r = 8;
-    uint64_t c1, c2, f = f0, g = g0, x, y, z;
+    uint64_t u = 1, v = 0, q = 0, r = 1;
+    uint64_t c1, c2, f = f0.buf[0], g = g0.buf[0], x, y, z;
     int i;
 
-    for(i=3;i<62;++i) {
+    for (i = 0; i < inv_loop_N; ++i) {
         c1 = zeta >> 63;
         c2 = -(g & 1);
 
@@ -42,11 +43,12 @@ static int64_t divsteps(int64_t zeta, uint64_t f0, uint64_t g0, trans2x2* t)
     return zeta;
 }
 
+//fix sign
 void update_fg(Fp& f, Fp& g, const trans2x2 t)
 {
-    Fp cf, cg;
+    FpDbl cf, cg;
     Fp u, v, q, r;
-    Fp temp, temp1;
+    FpDbl temp, temp1;
     mpz_class mpz_u, mpz_v, mpz_q, mpz_r;
     mpz_u = t.u; mpz_v = t.v; mpz_q = t.q; mpz_r = t.r;
     Fp::set_mpz(u, mpz_u);
@@ -180,7 +182,7 @@ Fp normalize(Fp& sign, Fp& v, Fp& M)
 }
 
 
-static Fp my_const_gcd(Fp& z, const Fp& x)
+static void my_const_gcd(Fp& z, const Fp& x)
 {
     Fp Mi;
     Mi.buf[0] = 691;
@@ -189,10 +191,25 @@ static Fp my_const_gcd(Fp& z, const Fp& x)
     int i;
     int64_t zeta = -1;
 
-    for (i = 0; i < 10; ++i) {
+    Fp shift;
+    mcl::bint::shiftLeft(shift.buf, Fp::fpone.buf, inv_loop_N, Fp::N);
+    mcl::bint::subUnit(shift.buf, N, *fpone.buf);
+    Fp f_shifted, g_shifted;
+    for (i = 0; i < 108; ++i) {
         trans2x2 t;
-        zeta = divsteps(zeta, f.buf[0], g.buf[0], &t);
-        update_de(d, e, t,Fp::p, Mi);
+
+        for (int j = 0; j < Fp::N; ++j) {
+            f_shifted.buf[j] = f.buf[j] & shift.buf[j];
+            g_shifted.buf[j] = g.buf[j] & shift.buf[j];
+        }
+
+        zeta = divsteps(zeta, f_shifted, g_shifted, &t);
+
         update_fg(f, g, t);
+
+
+        update_de(d, e, t, Fp::p, Mi);
+
     }
-    return(normalize(f, d, Fp::p) );
+    z = normalize(f, d, Fp::p);
+}
