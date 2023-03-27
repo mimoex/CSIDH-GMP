@@ -5,15 +5,16 @@
     static const size_t inv_loop_N = 54;
 
     typedef struct {
-        mpz_class u, v, q, r;
+        int64_t u, v, q, r;
     } trans2x2;
 
-    static void divsteps(mpz_class& zeta, mpz_class& f0, mpz_class& g0, trans2x2& t)
+    static void divsteps(int64_t& zeta, int64_t& f0, int64_t& g0, trans2x2& t)
     {
-        mpz_class u = 1, v = 0, q = 0, r = 1;
-        mpz_class c1, c2 = g0, x, y, z;
+        int64_t u = 1, v = 0, q = 0, r = 1;
+        int64_t c1, c2, x, y, z;
+        int i;
 
-        for (int i = 0; i < inv_loop_N; ++i) {
+        for (i = 0; i < inv_loop_N; ++i) {
             c1 = zeta >> 63;
             c2 = -(g0 & 1);
 
@@ -60,14 +61,17 @@
 
     static const uint64_t mask = (1ull << inv_loop_N) - 1;
 
-    static void update_de(mpz_class& d, mpz_class& e, const trans2x2& t, const mpz_class& Mi)
+    static void update_de(mpz_class& d, mpz_class& e, const trans2x2& t, const uint64_t& Mi)
     {
-        mpz_class d_sign, e_sign, md, me, cd, ce, uv, qr;
+        mpz_class cd, ce, uv, qr, temp;
+        int64_t d_sign, e_sign, md, me;
         uv = t.u * d + t.v * e;
         qr = t.q * d + t.r * e;
 
-        d_sign = d >> 512;
-        e_sign = e >> 512;
+        //d_sign = d >> 512;
+        d_sign = sgn(d);
+        //test = e >> 512;
+        e_sign = sgn(e);
 
         md = (t.u & d_sign) + (t.v & e_sign);
 
@@ -77,10 +81,16 @@
 
         ce = qr & mask;
 
-        md -= (Mi * cd + md) & mask;
+        //md -= (Mi * cd + md) & mask;
+        temp = Mi * cd;
+        temp += md;
+        md -= temp.get_si() & mask;
 
-        //me -= (Mi * ce + me) % 2 **N;
-        me -= (Mi * ce + me) & mask;
+        //me -= (Mi * ce + me) % 2 **N; Pythonの場合
+        //me -= (Mi * ce + me) & mask;
+        temp = Mi * ce;
+        temp += me;
+        me -= temp.get_si() & mask;
 
         cd = uv + modmpz * md;
 
@@ -92,7 +102,7 @@
 
     static void normalize(const mpz_class& sign, mpz_class& v)
     {
-        mpz_class v_sign, c;
+        mpz_class v_sign,c;
 
         v_sign = v >> 512;
         v += modmpz & v_sign;
@@ -109,23 +119,27 @@
 
     static void my_const_gcd(Fp& z, const Fp& x)
     {
-        mpz_class Mi = 17680012166682291;
+        uint64_t Mi = 17680012166682291;
         mpz_class d = 0, e = 1, f = Fp::modmpz, g;
         get_mpz(g, x);
         int i;
-        mpz_class zeta = -1;
+        int64_t zeta = -1;
 
-        mpz_class shift=1;
+        uint64_t shift=1;
         shift <<=  inv_loop_N;
         --shift;
 
         trans2x2 t;
-        mpz_class fs, gs;
+        int64_t fs, gs;
+        mpz_class temp;
+
 
         for (i = 0; i < 20; ++i) {
 
-            fs = f & shift;
-            gs = g & shift;
+            temp = f & shift;
+            fs = temp.get_si();
+            temp = g & shift;
+            gs = temp.get_si();
 
             divsteps(zeta, fs, gs, t);
 
