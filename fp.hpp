@@ -240,176 +240,191 @@ struct Fp {
         return 0;
     }
 
-    // constant-time gcd
-    // https://eprint.iacr.org/2019/266
-    static int gcd_const_time(Fp& z, const Fp& a_in, const Fp& b_in)
+
+    //constant-time binaryGCD
+    static const size_t inv_loop_N = 54;
+
+    typedef struct {
+        int64_t u, v, q, r;
+    } trans2x2;
+
+    static void divsteps(int64_t& zeta, int64_t& f0, int64_t& g0, trans2x2& t)
     {
-        Fp g, r, temp;
-        uint64_t mask = 0;
-        int bit = 1, shifts = 0;
+        int64_t u = 1, v = 0, q = 0, r = 1;
+        int64_t c1, c2, x, y, z;
+        int i;
 
-        mcl::bint::shiftLeft(g.buf, b_in.buf, 1, N);
-        mcl::bint::shiftLeft(r.buf, a_in.buf, 1, N);
+        for (i = 0; i < inv_loop_N; ++i) {
+            c1 = zeta >> 63;
+            c2 = -(g0 & 1);
 
-        /* 2のべき乗を求める */
-        for (int i = 0; i < N ; i++) {
-            mask = ~(r.buf[i] | g.buf[i]);
-            for (int j = 0; j < sizeof(uint64_t); j++) {
-                bit &= mask;
-                shifts += bit;
-                mask >>= 1;
-            }
+            x = (f0 ^ c1) - c1;
+            y = (u ^ c1) - c1;
+            z = (v ^ c1) - c1;
+
+            g0 += x & c2;
+            q += y & c2;
+            r += z & c2;
+            c1 &= c2;
+            zeta ^= c1;
+            zeta -= 1;
+            f0 += g0 & c1;
+            u += q & c1;
+            v += r & c1;
+            /* Shifts */
+            g0 >>= 1;
+            u <<= 1;
+            v <<= 1;
         }
-
-        mcl::bint::shiftRight(r.buf, r.buf, shifts, N);
-        mcl::bint::shiftRight(g.buf, g.buf, shifts, N);
-
-        if (~r.buf[0] & 1) {
-            Fp tmp;
-            tmp = r;
-            r = g;
-            g = r;
-        }
-
-        int rlen, glen;
-        rlen = mpn_sizeinbase(r.buf, N, 2);
-        glen = mpn_sizeinbase(g.buf, N, 2);
-
-        int m;
-        if (rlen >= glen) {
-            m = 4 + 3 * rlen;
-        }
-        else {
-            m = 4 + 3 * glen;
-        }
-
-
-        int delta = 1, cond = 0;
-        for (int i = 0; i < m; i++) {
-            cond = (-delta >> (8 * sizeof(delta) - 1)) & g.buf[0] & 1
-                & (~((N - 1) >> (sizeof(N) * 8 - 1)));
-            delta = (-cond & -delta) | ((cond - 1) & delta);
-
-
-            if (cond) {
-                Fp tmp;
-                tmp = r;
-                r = g;
-                g = r;
-            }
-
-            /* elimination step */
-            delta++;
-            add(temp, g, r);
-
-            if (g.buf[0] & 1 & (~((N - 1) >> (sizeof(N) * 8 - 1)))) {
-                Fp tmp;
-                tmp = g;
-                g = temp;
-                temp = tmp;
-            }
-            mcl::bint::shiftRight(g.buf, g.buf, shifts, N);
-        }
-        
-        mcl::bint::shiftLeft(r.buf, r.buf, shifts, N);
-        mcl::bint::shiftRight(r.buf, r.buf, shifts, 1);
-
-        z = r;
-        return 0;
-
+        t.u = u;
+        t.v = v;
+        t.q = q;
+        t.r = r;
     }
 
-    //Partial Montgomery inversion in Fp
-    //imput: p > 2, a ∈[1, p −1], and n
-    //output: z = (a^−1)*(2^k) mod p.
-    static int montgomery_inv(Fp& z, const Fp& y)
+    static void update_fg(mpz_class& f, mpz_class& g, const trans2x2& t)
     {
-        int k=0, wt=512;
-        Fp u, v, x1, x2, zero;
-        u = y; v = p; x1 = fpone;
-        Fp R2jo;
-        mpz_export(&R2jo.buf, NULL, -1, 8, 0, 0, mpz_class("3947327457839989874159000189894703360015228924095003483386664762373288376865104950408299280378777970576316508563621754752968328106814122407552099437904268").get_mpz_t());
+        mpz_class cf, cg;
+        mpz_class temp, temp1;
 
+        temp = t.u * f;
+        temp1 = t.v * g;
+        cf = temp + temp1;
 
-        if (mcl::bint::isZeroT<N>(y.buf)) {
-            throw std::range_error("Divided by zero.");
-            return -1;
-        }
-        else {
-            while (mcl::bint::cmpGtT<N>(v.buf, zero.buf)) {
+        temp = t.q * f;
+        temp1 = t.r * g;
+        cg = temp + temp1;
 
-                if ((v.buf[0] & 1) == 0) {
-                    mcl::bint::shrT<N>(v.buf, v.buf, 1);
-                    mcl::bint::addT<N>(x1.buf, x1.buf, x1.buf);
-                }
-                else if ((u.buf[0] & 1) == 0) {
-                    mcl::bint::shrT<N>(u.buf, u.buf, 1);
-                    mcl::bint::addT<N>(x2.buf, x2.buf, x2.buf);
-                }
-                else if (mcl::bint::cmpGeT<N>(v.buf, u.buf)) {
-                    mcl::bint::subT<N>(v.buf, v.buf, u.buf);
-                    mcl::bint::shrT<N>(v.buf, v.buf, 1);
-
-                    mcl::bint::addT<N>(x2.buf, x2.buf, x1.buf);
-
-                    mcl::bint::addT<N>(x1.buf, x1.buf, x1.buf);
-                }
-                else {
-                    mcl::bint::subT<N>(u.buf, u.buf, v.buf);
-                    mcl::bint::shrT<N>(u.buf, u.buf, 1);
-
-                    mcl::bint::addT<N>(x1.buf, x2.buf, x1.buf);
-
-                    mcl::bint::addT<N>(x2.buf, x2.buf, x2.buf);
-                }
-                k += 1;
-
-                if (mcl::bint::cmpGeT<N>(x1.buf, p.buf)) {
-                    sub(x1, x1, p);
-                }
-            }
-
-            //ここまで x1=(y^-1)*(2^k)% mod
-
-            Fp twoWt;
-            mpz_class twoWtMPZ;
-            int beki_temp, beki;
-            mpz_class bekijo;
-            if (k< wt) {
-                mul(x1, x1, R2jo);
-                k += wt;
-            }
-            mul(x1, x1, R2jo);
-
-            beki_temp = 2 * wt;
-            beki = beki_temp - k;
-            mpz_powm_ui(twoWtMPZ.get_mpz_t(), mpz_class(2).get_mpz_t(), beki, modmpz.get_mpz_t());
-            set_mpz(twoWt, twoWtMPZ);
-            mul(z, x1, twoWt);
-        }
-        return 0;
+        f = cf >> inv_loop_N;
+        g = cg >> inv_loop_N;
     }
 
-/*
-    static void div(Fp& z, const Fp& x, const Fp& y)
+    static const uint64_t mask = (1ull << inv_loop_N) - 1;
+
+    static void update_de(mpz_class& d, mpz_class& e, const trans2x2& t, const uint64_t& Mi)
     {
-        Fp temp, xmon, ymon, invy;
+        mpz_class cd, ce, uv, qr, temp;
+        int64_t d_sign, e_sign, md, me;
+        uv = t.u * d + t.v * e;
+        qr = t.q * d + t.r * e;
 
-        mul(xmon, x, p.R2);
-        mul(ymon, y, p.R2);
-        inv(invy, ymon);
-        mul(temp, xmon, invy);
+        //d_sign = d >> 512;
+        d_sign = sgn(d);
+        //test = e >> 512;
+        e_sign = sgn(e);
 
-        MR512(z, temp);
+        md = (t.u & d_sign) + (t.v & e_sign);
+
+        me = (t.q & d_sign) + (t.r & e_sign);
+
+        cd = uv & mask;
+
+        ce = qr & mask;
+
+        //md -= (Mi * cd + md) & mask;
+        temp = Mi * cd;
+        temp += md;
+        md -= temp.get_si() & mask;
+
+        //me -= (Mi * ce + me) % 2 **N; Pythonの場合
+        //me -= (Mi * ce + me) & mask;
+        temp = Mi * ce;
+        temp += me;
+        me -= temp.get_si() & mask;
+
+        cd = uv + modmpz * md;
+
+        ce = qr + modmpz * me;
+
+        d = cd >> inv_loop_N;
+        e = ce >> inv_loop_N;
     }
-    */
 
+    static void normalize(const mpz_class& sign, mpz_class& v)
+    {
+        mpz_class v_sign,c;
+
+        v_sign = v >> 512;
+        v += modmpz & v_sign;
+
+        c = (sign - 1) >> 1;
+
+        v ^= c;
+        v -= c;
+        v_sign = v >> 512;
+
+        v += modmpz & v_sign;
+    }
+
+
+    static void my_const_gcd(Fp& z, const Fp& x)
+    {
+        uint64_t Mi = 17680012166682291;
+        mpz_class d = 0, e = 1, f = Fp::modmpz, g;
+        get_mpz(g, x);
+        int i;
+        int64_t zeta = -1;
+
+        uint64_t shift=1;
+        shift <<=  inv_loop_N;
+        --shift;
+
+        trans2x2 t;
+        int64_t fs, gs;
+        mpz_class temp;
+
+
+        for (i = 0; i < 20; ++i) {
+
+            temp = f & shift;
+            fs = temp.get_si();
+            temp = g & shift;
+            gs = temp.get_si();
+
+            divsteps(zeta, fs, gs, t);
+
+            update_fg(f, g, t);
+
+            update_de(d, e, t, Mi);
+
+        }
+        normalize(f, d);
+        set_mpz(z, d);
+    }
+
+    // //fermat inv
+    // static void div(Fp& z, const Fp& x, const Fp& y)
+    // {
+    //     Fp temp, xmon, ymon, invy;
+
+    //     mul(xmon, x, p.R2);
+    //     mul(ymon, y, p.R2);
+    //     inv(invy, ymon);
+    //     mul(temp, xmon, invy);
+
+    //     MR512(z, temp);
+    // }
+
+
+    // //binary gcd inv
+    // static void div(Fp& z, const Fp& xmon, const Fp& ymon)
+    // {
+    //     Fp yinv, y, ytemp;
+
+    //     MR512(y, ymon);
+    //     binary_inv(yinv, y);
+    //     mul(ytemp, yinv, p.R2);  //yinv*R
+
+    //     mul(z, xmon, ytemp);  // x * y^-1
+    // }
+
+    //const-time binary gcd inv
     static void div(Fp& z, const Fp& xmon, const Fp& ymon)
     {
         Fp yinv, y, ytemp;
 
         MR512(y, ymon);
-        binary_inv(yinv, y);
+        my_const_gcd(yinv, y);
         mul(ytemp, yinv, p.R2);  //yinv*R
 
         mul(z, xmon, ytemp);  // x * y^-1
