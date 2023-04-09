@@ -11,3 +11,10 @@ Build mcl.
 ```
 make -j lib/libmcl.a
 ```
+
+How to get profile.
+
+```
+sudo env MCL_PERF=1 perf record ./csidh
+sudo perf report
+```
